@@ -1,4 +1,4 @@
-# icr-intercell gene name dictionary v0.1
+# icr-intercell gene name dictionary v0.2
 #
 # jamesc@icr.ac.uk, 13th May 2014
 #
@@ -10,6 +10,9 @@
 # 	ftp://ftp.ncbi.nlm.nih.gov/gene/DATA/GENE_INFO/Mammalia/Homo_sapiens.gene_info.gz
 #
 # This version contains 102615 alia for 47634 distinct gene names
+#
+# Changes: 
+#   changed HGF\tSOS1 to HGF\tHGF
 #
 #alias	gene_name
 DDC8	TIMP2
@@ -100985,7 +100988,7 @@ NRDR	DHRS4
 TRNAS5	TRNAS5
 GBAP	GBAP1
 HSPB9	HSPB9
-HGF	SOS1
+HGF	HGF
 SOX18	SOX18
 SERPINA10	SERPINA10
 K(VCA)beta	KCNMB1
