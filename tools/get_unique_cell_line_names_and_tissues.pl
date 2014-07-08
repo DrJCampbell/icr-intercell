@@ -1,6 +1,7 @@
 #!/usr/bin/perl -w
 # script used to get unique gene names from COSMIC cell line names and 
 # tissues extracted from CosmicCLP_CompleteExport_v68.tsv.gz
+# Needed to help build a cell line name dictionary
 # jamesc@icr.ac.uk, 13th May 2014
 
 use strict;

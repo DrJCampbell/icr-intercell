@@ -3,18 +3,20 @@
 # process_mutation_data.pl
 # read data from CCLE etc, count mutations by type
 # for each gene and cell line
-# jamesc@icr.ac.uk, 20th May 2014
+# jamesc@icr.ac.uk, 4th June 2014
 # ============================================= #
 
 use strict;
 use Getopt::Long;
 
-my ($help, $ccle_data, $cosmic_data, $mut_freqs, $genes, $cell_lines, $output, $output_genes_list, $vcf_data);
+my ($help, $ccle_mut_data, $cosmic_mut_data, $mut_freqs, $genes, $cell_lines, $output, $output_genes_list, $vcf_mut_data, $ccle_cna_data);
 
 GetOptions (
-  "ccle_data=s" => \$ccle_data,
-  "cosmic_data=s" => \$cosmic_data,
-  "vcf_data=s" => \$vcf_data,
+  "ccle_muts=s" => \$ccle_mut_data,
+  "cosmic_muts=s" => \$cosmic_mut_data,
+  "vcf_muts=s" => \$vcf_mut_data,
+  "ccle_cna=s" => \$ccle_cna_data,
+#  "cosmic_cna=s" => \$cosmic_cna_data,
   "mut_freqs=s" => \$mut_freqs,
   "genes=s" => \$genes,
   "cell_lines=s" => \$cell_lines,
@@ -33,7 +35,7 @@ GetOptions (
 
 
 
-# print usage message if requested or no args supplied
+# print usage message if requested
 if(defined($help)) {
   &usage;
   exit(0);
@@ -41,8 +43,10 @@ if(defined($help)) {
 
 $output = "combined_mutation_data_table.txt" unless defined $output;
 
+# ============================== #
+# read cell line name dictionary #
+# ============================== #
 
-# read cell line name dictionary
 open CL, "< $cell_lines" or die "Can't read cell line name dictionary $cell_lines: $!\n";
 
 my %cell_lines;
@@ -55,7 +59,9 @@ while(<CL>){
 
 close CL;
 
-# read gene name dictionary
+# ========================= #
+# read gene name dictionary #
+# ========================= #
 open GN, "< $genes" or die "Can't read gene name dictionary $genes: $!\n";
 
 my %genes;
@@ -69,7 +75,9 @@ while(<GN>){
 
 close GN;
 
-# read in the mutation frequency data
+# =================================== #
+# read in the mutation frequency data #
+# =================================== #
 open MFRQ, "< $mut_freqs" or die "Can't read mutation frequency information file $mut_freqs: $!\n";
 
 my %mut_freqs;
@@ -82,7 +90,11 @@ while(<MFRQ>){
 
 close MFRQ;
 
-# read in the list of genes we want to output at the end and standardise
+
+# ==================================== #
+# read in the list of genes we want to #
+# output at the end and standardise    #
+# ==================================== #
 open OUTGENES, "< $output_genes_list" or die "Can't read list of genes to output from file $output_genes_list: $!\n";
 my %output_genes;
 while(<OUTGENES>){
@@ -98,7 +110,9 @@ while(<OUTGENES>){
 close OUTGENES;
 
 
-# types of mutation consequences present in file:
+# ================================================ #
+# types of mutation consequences present in files: #
+# ================================================ #
 my %mutation_consequences = (
 	"De_novo_Start_InFrame" => "aa_sub", # These cover CCLE consequences
 	"In_Frame_Del" => "aa_sub",
@@ -134,13 +148,14 @@ my %mutation_consequences = (
 	"Substitution - Nonsense" => "trunc",
 	"Substitution - coding silent" => "unknown",
 	"Unknown" => "unknown",
-	"aa_sub" => "aa_sub",
+	"aa_sub" => "aa_sub", # These are used in the modifed VCF+VEP calls for ovarian data
 	"mirna" => "mirna",
 	"non_coding" => "non_coding",
 	"silent" => "silent",
 	"trunc" => "trunc",
 	"unknown" => "unknown"
 	);
+
 
 # ====================================================== #
 # Want a table with one row per cell line and one column
@@ -176,7 +191,7 @@ my %ccle_rec_mis;		# store recurrent missense counts for cell*gene
 my %ccle_other;			# store other counts for cell*gene
 
 # Open and read mutations file
-open MUTS, "< $ccle_data" or die "Can't read mutations file $ccle_data: $!\n";
+open MUTS, "< $ccle_mut_data" or die "Can't read mutations file $ccle_mut_data: $!\n";
 
 my $header = <MUTS>;
 
@@ -225,7 +240,15 @@ while(<MUTS>){
   $genes_seen{$standard_gene} = 1;
 
   # update the master record of all cell lines and genes seen
-  $master_cell_lines_seen{$standard_cell_line} = 1;
+  # Note that for the %master_cell_lines_seen hash, we need to
+  # know if the cell line was seen with mutation data or copy
+  # number data. 
+  if(exists($master_cell_lines_seen{$standard_cell_line})){
+  	$master_cell_lines_seen{$standard_cell_line} .= "\tmut";
+  }
+  else{
+  	$master_cell_lines_seen{$standard_cell_line} = "\tmut";
+  }
   $master_genes_seen{$standard_gene} = 1;
   
   
@@ -250,7 +273,6 @@ close MUTS;
 # Process the COSMIC data #
 # ======================= #
 
-
 # reset these so we can reuse for COSMIC
 %cell_lines_seen = ();
 %genes_seen = ();
@@ -261,7 +283,7 @@ my %cos_rec_mis;	# store recurrent missense counts for cell*gene
 my %cos_other;		# store other counts for cell*gene
 
 # Open and read mutations file
-open COS, "< $cosmic_data" or die "Can't read mutations file $cosmic_data: $!\n";
+open COS, "< $cosmic_mut_data" or die "Can't read mutations file $cosmic_mut_data: $!\n";
 
 $header = <COS>;
 
@@ -296,10 +318,9 @@ while(<COS>){
   
   # lookup gene and cell line name in dictionaries
   my $standard_gene = $entrez_gene;
-  # The COSMIC data often has the gene ID concatenated to the 
-  # transcript ID. e.g. CEACAM18_ENST00000451626
-  # strip out anything after and '_' from entrez_gene
-  $standard_gene =~ s/_.+//;
+  $standard_gene =~ s/_.+//;	# The COSMIC data often has the gene ID concatenated to the 
+								# transcript ID. e.g. CEACAM18_ENST00000451626
+								# strip out anything after '_' from entrez_gene
   
   if(exists($genes{$entrez_gene})){
     $standard_gene = $genes{$entrez_gene};
@@ -326,7 +347,12 @@ while(<COS>){
   $genes_seen{$standard_gene} = 1;
   
   # update the master record of all cell lines and genes seen
-  $master_cell_lines_seen{$standard_cell_line} = 1;
+  if(exists($master_cell_lines_seen{$standard_cell_line})){
+  	$master_cell_lines_seen{$standard_cell_line} .= "\tmut";
+  }
+  else{
+  	$master_cell_lines_seen{$standard_cell_line} = "\tmut";
+  }
   $master_genes_seen{$standard_gene} = 1;
 
 #  
@@ -355,44 +381,6 @@ close COS;
 # Process the ICR VCF+VEP data #
 # ============================ #
 
-
-
-# [0] original_file
-# [1] cell_line
-# [2] CHROM
-# [3] POS
-# [4] ID
-# [5] REF
-# [6] ALT
-# [7] QUAL
-# [8] FILTER
-# [9] INFO
-# [10] FORMAT
-# [10] ES2
-# [11] JapHapMap
-# [12] Uploaded_variation
-# [13] Location
-# [14] Allele
-# [15] Gene
-# [16] Feature
-# [17] Feature_type
-# [18] Consequence
-# [19] cDNA_position
-# [20] CDS_position
-# [20] Protein_position
-# [21] Amino_acids
-# [22] Codons
-# [23] Existing_variation
-# [24] Extra
-# [25] most_severe_consequence
-# [26] protein_mutation
-
-
-
-
-
-
-
 # reset these so we can reuse for VCF+VEP data
 %cell_lines_seen = ();
 %genes_seen = ();
@@ -403,7 +391,7 @@ my %icr_rec_mis;	# store recurrent missense counts for cell*gene
 my %icr_other;		# store other counts for cell*gene
 
 # Open and read mutations file
-open ICR, "< $vcf_data" or die "Can't read mutations file $vcf_data: $!\n";
+open ICR, "< $vcf_mut_data" or die "Can't read mutations file $vcf_mut_data: $!\n";
 
 $header = <ICR>;
 
@@ -464,7 +452,12 @@ while(<ICR>){
   $genes_seen{$standard_gene} = 1;
   
   # update the master record of all cell lines and genes seen
-  $master_cell_lines_seen{$standard_cell_line} = 1;
+  if(exists($master_cell_lines_seen{$standard_cell_line})){
+  	$master_cell_lines_seen{$standard_cell_line} .= "\tmut";
+  }
+  else{
+  	$master_cell_lines_seen{$standard_cell_line} = "\tmut";
+  }
   $master_genes_seen{$standard_gene} = 1;
 
   if($mutation_consequences{$var_class} eq "trunc"){	# if mutation is truncating
@@ -485,6 +478,72 @@ close ICR;
 
 
 
+# ================================= #
+# Process the CCLE gistsic CNA data #
+# ================================= #
+
+
+# reset these so we can reuse for VCF+VEP data
+%cell_lines_seen = ();
+%genes_seen = ();
+%mutations_seen = ();
+
+my %ccle_cnas;		# store: none/amp/del/gain/loss
+
+# Open and read the CCLE CNA file
+open CCLECNA, "< $ccle_cna_data" or die "Can't read mutations file $ccle_cna_data: $!\n";
+
+$header = <CCLECNA>;
+chomp($header);
+my @ccle_cna_celllines = split(/\t/,$header);
+
+while(<CCLECNA>){
+
+  my @fields = split(/\t/);
+  chomp($fields[$#fields]);
+
+  my $standard_gene = shift @fields;
+  if(exists($genes{$standard_gene})){
+    $standard_gene = $genes{$standard_gene};
+  }
+  
+  my $cell_line_counter = 1;
+  
+  foreach my $cna (@fields){
+    
+    my $standard_cell_line = $ccle_cna_celllines[$cell_line_counter];
+    $cell_line_counter ++;
+    
+    if(exists($cell_lines{$standard_cell_line})){
+      $standard_cell_line = $cell_lines{$standard_cell_line};
+    }
+    
+    
+    # update the master record of all cell lines and genes seen
+    if(exists($master_cell_lines_seen{$standard_cell_line})){
+    	$master_cell_lines_seen{$standard_cell_line} .= "\tCNA";
+    }
+    else{
+    	$master_cell_lines_seen{$standard_cell_line} = "\tCNA";
+    }
+    $master_genes_seen{$standard_gene} = 1;
+    
+    my $ccle_cna_key = "$standard_cell_line\t$standard_gene";
+
+    $ccle_cnas{$ccle_cna_key} = $cna;
+        
+  }
+
+} # finished reading file, close
+close CCLECNA;
+
+
+
+
+
+
+
+
 # ==================================== #
 # Process the hashes to format outputs
 # ==================================== #
@@ -492,20 +551,38 @@ close ICR;
 
 # get lists of all genes and cell lines seen in any data set
 my @cell_lines_seen = keys %master_cell_lines_seen;
-my @genes_seen = keys %master_genes_seen;
 
+#my @genes_seen = keys %master_genes_seen;
+my @genes_seen = keys %output_genes;		# the list of genes from CGC and C5000
+
+
+# We need to indicate which data sets were available (mut, cna or mut_cna) as a column
+# in the output.
 
 my $output_data = '';
 
-my $output_header = "cell_line";
-foreach my $seen_gene (@genes_seen){
-  $output_header .= "\t$seen_gene (trunc)\t$seen_gene (rec_mis)\t$seen_gene (other)";
+my $output_header = "cell_line\tdatasets";
+foreach my $seen_gene (@genes_seen){	# The CGC and C5000s sets
+  $output_header .= "\t$seen_gene (trunc)\t$seen_gene (rec_mis)\t$seen_gene (other)\t$seen_gene (gistic)";
 }
 $output_header .= "\n";
 
 
-foreach my $seen_cell_line (@cell_lines_seen){
-  $output_data .= $seen_cell_line;
+#foreach my $seen_cell_line (@cell_lines_seen){ # from keys %master_cell_lines_seen
+while(my ($seen_cell_line, $cell_line_seen_in_dataset) = each  %master_cell_lines_seen){
+  my $datasets = undef;
+  if($cell_line_seen_in_dataset =~ /\tmut/){
+    if($cell_line_seen_in_dataset =~ /\tCNA/){
+      $datasets = 'mutation_CNA';
+    }
+    else{
+      $datasets = 'mutation';
+    }
+  }
+  else{
+    $datasets = 'CNA';
+  }
+  $output_data .= "$seen_cell_line\t$datasets";
   foreach my $seen_gene (@genes_seen){
     my $hash_key = "$seen_cell_line\t$seen_gene";
     if(exists($ccle_truncs{$hash_key}) || exists($cos_truncs{$hash_key})){
@@ -525,6 +602,12 @@ foreach my $seen_cell_line (@cell_lines_seen){
     }
     else{
       $output_data .= "\t0";
+    }
+    if(exists($ccle_cnas{$hash_key})){
+      $output_data .= "\t$ccle_cnas{$hash_key}";
+    }
+    else{
+      $output_data .= "\tNA";
     }
   }
   $output_data .= "\n";
@@ -550,6 +633,7 @@ Options
 --ccle_data		Path to the CCLE maf file [required]
 --cosmic_data	Path to the COSMIC mutations file [required]
 --vcf_data		Path to the ICR mutation data [required]
+--ccle_cna		Path to the gistic CCLE CN calls from cBioPortal[required]
 --mut_freqs		Path to the processed Davoli data [required]
 --genes			Path to the gene name dictionary [required]
 --cell_lines		Path to the cell line name dictionary [required]

@@ -1,10 +1,12 @@
 #!/usr/bin/perl -w
-# ============================================= #
+# ===================================================== #
+# *** Depricated - renamed to process mutation data ***
+# ===================================================== #
 # process_CCLE_mutations.pl
 # read data from CCLE, count mutations by type
 # for each gene and cell line
 # jamesc@icr.ac.uk, 14th May 2014
-# ============================================= #
+# ===================================================== #
 
 use strict;
 use Getopt::Long;

@@ -13,6 +13,8 @@
 #
 # Changes: 
 #   changed HGF\tSOS1 to HGF\tHGF
+#	changed APC\tPROC to APC\APC
+# need to address the issue of an official gene name being an alias for another gene...
 #
 #alias	gene_name
 DDC8	TIMP2
@@ -23978,7 +23980,7 @@ NCRNA00336	LINC00336
 ERRFI1	ERRFI1
 COX7C	COX7C
 FAM108B1	ABHD17B
-APC	PROC
+APC	APC
 DNAJC19P9	DNAJC19P9
 FHI	CYP11B1
 PEAS	KLHDC3
