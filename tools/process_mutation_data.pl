@@ -1028,12 +1028,7 @@ while(my ($seen_cell_line, $cell_line_seen_in_dataset) = each  %master_cell_line
     }
     else{
       $mutation_matrix .= "\t1";
-      if($other == 1){
-        $other_matrix .= "\t1";
-      }
-      else{
-        $other_matrix .= "\t0";
-      }
+      $other_matrix .= "\t1";
     }
     
     
