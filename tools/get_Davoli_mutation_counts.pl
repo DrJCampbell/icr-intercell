@@ -17,6 +17,9 @@ my $mutations_file = "../resources/Davoli_mutation_data/Mutation_Dataset.txt";
 #A1BG    19:58864380-58864381    CC      -       p.G85fs Indel Frameshift        TCGA-G2-A3IE-01A        Bladder Carcinoma
 #A1BG    19:58862784-58862784    C       T       p.A295T Missense        pfg019T Stomach Adenocarcinoma
 
+# Note that the Gene column contains official HGNC symbols (eg KMT2B, not MLL2 or MLL4...)
+
+
 # read in the gene name dictionary
 my %gene_names;
 open GN, "< $gene_name_dictionary_file" or die "unable to open gene name dictionary $gene_name_dictionary_file: $!\n";
