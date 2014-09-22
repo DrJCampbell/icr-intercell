@@ -4,6 +4,13 @@
 # read data from CCLE etc, count mutations
 # by type for each gene and cell line
 # jamesc@icr.ac.uk, 25th July 2014
+#
+# To look at the contribution of each data
+# to the outcome, set dummy empty files for
+# the given data set to exclude and run as
+# normal. The dummy file could include the
+# normal header and one gene that is not in
+# the list of genes to output.
 # ========================================= #
 
 use strict;
@@ -114,6 +121,7 @@ my %ensembl_to_output_genes;
 
 while(<OUTGENES>){
   next if /^#/;
+  next if /^[\r\n]/; # skip blank lines
   my ($symbol, $entrez, $ensembl, $type) = split /\t/;
   chomp($type);
   #my $standard_gene = $gene;
