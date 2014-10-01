@@ -322,6 +322,9 @@ while(<MUTS>){
   if(exists($cell_lines{$sample})){
     $standard_cell_line = $cell_lines{$sample};
   }
+  else{
+    warn "Cell line $sample not found in the cell line dictionary. You may need to add it.\n";
+  }
 
 
 # DEBUG
@@ -437,7 +440,9 @@ while(<COS>){
   if(exists($cell_lines{$sample})){
     $standard_cell_line = $cell_lines{$sample};
   }
-
+  else{
+    warn "Cell line $sample not found in the cell line dictionary. You may need to add it.\n";
+  }
   
   # skip processing this variant if the gene symbol is not in the set of output genes
   next unless exists $symbol_to_output_genes{$standard_gene};
@@ -552,6 +557,9 @@ while(<ICR>){
   if(exists($cell_lines{$sample})){
     $standard_cell_line = $cell_lines{$sample};
   }
+  else{
+    warn "Cell line $sample not found in the cell line dictionary. You may need to add it.\n";
+  }
 
   # store a hash key for every cell line * genome_change * consequence seen
   # skip if already counted...
@@ -654,6 +662,9 @@ while(<BIANKIN>){
   my $standard_cell_line = $sample;
   if(exists($cell_lines{$sample})){
     $standard_cell_line = $cell_lines{$sample};
+  }
+  else{
+    warn "Cell line $sample not found in the cell line dictionary. You may need to add it.\n";
   }
 
   # store a hash key for every cell line * genome_change * consequence seen
@@ -772,6 +783,9 @@ while(<WTSI>){
   if(exists($cell_lines{$sample})){
     $standard_cell_line = $cell_lines{$sample};
   }
+  else{
+    warn "Cell line $sample not found in the cell line dictionary. You may need to add it.\n";
+  }
 
   
   # skip processing this variant if the gene symbol is not in the set of output genes
@@ -877,6 +891,9 @@ while(<CCLECNA>){
     
     if(exists($cell_lines{$standard_cell_line})){
       $standard_cell_line = $cell_lines{$standard_cell_line};
+    }
+    else{
+      warn "Cell line $standard_cell_line not found in the cell line dictionary. You may need to add it.\n";
     }
     
     
