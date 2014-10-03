@@ -51,7 +51,7 @@ common.celllines <- intersect(
 # get the common cell lines for mut_classes, exprn and tissues
 mut_classes.cmn <- NULL
 exprn.cmn <- NULL
-exprn.z.cmn <- NULL
+#exprn.z.cmn <- NULL
 tissues.cmn <- NULL
 cell_line <- NULL
 for(cell_line in common.celllines){
@@ -67,16 +67,16 @@ for(cell_line in common.celllines){
 		tissues.cmn,
 		tissues[cell_line]
 		)
-	exprn.z.cmn <- cbind(
-		exprn.z.cmn,
-		exprn.z[,cell_line]
-		)
+#	exprn.z.cmn <- cbind(
+#		exprn.z.cmn,
+#		exprn.z[,cell_line]
+#		)
 }
 colnames(exprn.cmn) <- common.celllines
-colnames(exprn.z.cmn) <- common.celllines
+#colnames(exprn.z.cmn) <- common.celllines
 colnames(mut_classes.cmn) <- common.celllines
 rownames(exprn.cmn) <- rownames(exprn)
-rownames(exprn.z.cmn) <- rownames(exprn)
+#rownames(exprn.z.cmn) <- rownames(exprn)
 rownames(mut_classes.cmn) <- rownames(mut_classes.t)
 
 
@@ -167,6 +167,7 @@ rownames(mut_classes.cmn) <- rownames(mut_classes.t)
 
 # ========================================= #
 # plot expression values across the tissues #
+# old function using plot, not stripchart   #
 # ========================================= #
 
 # define colours to plot each tissue
@@ -204,6 +205,51 @@ plot_exprn_by_tissue(
 	)
 
 dev.off()
+
+
+
+# ============================================== #
+# plot expression values across the tissues - v2 #
+# ============================================== #
+
+# define colours to plot each tissue
+tissue_cols <- sample(rainbow(30))
+names(tissue_cols) <- tissue_types
+
+pdf("plot_expression_by_tissue_v2.pdf", width=10, height=5)
+
+plot_exprn_by_tissue2(
+	exprn,
+	gene="CDH1_999_ENSG00000039068",
+	tissues,
+	tissue_cols=tissue_cols
+	)
+
+plot_exprn_by_tissue2(
+	exprn,
+	gene="ERBB2_2064_ENSG00000141736",
+	tissues,
+	tissue_cols=tissue_cols
+	)
+
+plot_exprn_by_tissue2(
+	exprn,
+	gene="RB1_5925_ENSG00000139687",
+	tissues,
+	tissue_cols=tissue_cols
+	)
+
+plot_exprn_by_tissue2(
+	exprn,
+	gene="ARID1A_8289_ENSG00000117713",
+	tissues,
+	tissue_cols=tissue_cols
+	)
+
+dev.off()
+
+
+
 
 # ==================================================== #
 # focus on CDH1 in breast. Divide cell line expression
@@ -314,16 +360,43 @@ for(i in 1:nrow(exprn.cmn)){
 colnames(exprn.z.bytissue.cmn) <- (common.celllines)
 rownames(exprn.z.bytissue.cmn) <- rownames(exprn)
 
-# ====================================================== #
-# write out the data for use by process_mutation_data.pl
-# ====================================================== #
+# ================================================================================= #
+# reshape the data to long format and write out for use by process_mutation_data.pl
+# ================================================================================= #
+
+exprn.z.bytissue.cmn.wide <- as.data.frame(t(exprn.z.bytissue.cmn))
+
+#exprn.z.bytissue.cmn.wide <- cbind(
+#	rownames(exprn.z.bytissue.cmn),
+#	exprn.z.bytissue.cmn
+#	)
+#colnames(exprn.z.bytissue.cmn.wide) <- c(
+#	"cell.line",
+#	colnames(exprn.z.bytissue.cmn)
+#	)
+
+exprn.z.bytissue.cmn.long <- reshape(
+	exprn.z.bytissue.cmn.wide,
+	idvar="cell.line",
+	ids=rownames(exprn.z.bytissue.cmn.wide),
+	times=names(exprn.z.bytissue.cmn.wide),
+	timevar="gene",
+	varying=list(names(exprn.z.bytissue.cmn.wide)),
+	direction = "long"
+	)
+colnames(exprn.z.bytissue.cmn.long) <- c(
+	"gene",
+	"expression.z",
+	"cell.line"
+	)
+
 
 write.table(
-	t(exprn.z.bytissue.cmn),
+	exprn.z.bytissue.cmn.long,
 	file="expression_zscores_within_tissues_141001.txt",
 	sep="\t",
 	col.names=TRUE,
-	row.names=TRUE,
+	row.names=FALSE,
 	quote=FALSE
 	)
 
@@ -762,3 +835,45 @@ plot_exprn_by_tissue <- function(
 }
 
 
+# ============================== #
+
+plot_exprn_by_tissue2 <- function(
+	exprn,
+	gene,
+	tissues,
+	tissue_cols
+	){
+	tissues <- NULL
+	i <- NULL
+	for(i in 1:ncol(exprn)){
+		tissues[i] <- sub(
+			"^[^_]+_",
+			"",
+			colnames(exprn)[i],
+			perl=TRUE
+			)	
+	}
+	
+	tissue_types <- levels(as.factor(tissues))
+	
+#	tissue_cols <- sample(rainbow(30))
+#	names(tissue_cols) <- tissue_types
+	
+	x_positions <- 1:ncol(exprn)
+	
+	par(mai=c(2,1,0.5,0.5))
+	
+	stripchart(
+		log2(exprn.cmn[gene,]) ~ tissues.cmn,
+		method="jitter",
+		vertical=TRUE,
+		pch=19,
+		col=rgb(0,0,0,0.25),
+		jitter=0.2,
+		las=2,
+		cex.axis=0.75,
+		ylab="log2 normalised expression",
+		main=gene
+		)
+	
+}

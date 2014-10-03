@@ -16,7 +16,7 @@
 use strict;
 use Getopt::Long;
 
-my ($help, $ccle_mut_data, $cosmic_mut_data, $biankin_mut_data, $mut_freqs, $genes, $cell_lines, $output, $output_genes_list, $vcf_mut_data, $ccle_cna_data, $wtsi_mut_data);
+my ($help, $ccle_mut_data, $cosmic_mut_data, $biankin_mut_data, $mut_freqs, $genes, $cell_lines, $output, $output_genes_list, $vcf_mut_data, $ccle_cna_data, $wtsi_mut_data, $wtsi_expression_z_data);
 
 GetOptions (
   "ccle_muts=s" => \$ccle_mut_data,
@@ -26,6 +26,7 @@ GetOptions (
   "wtsi_muts=s" => \$wtsi_mut_data,
 #  "cosmic_cna=s" => \$cosmic_cna_data,
   "biankin_muts=s" => \$biankin_mut_data,
+  "wtsi_expression_z_data=s" => \$wtsi_expression_z_data,
   "mut_freqs=s" => \$mut_freqs,
   "genes=s" => \$genes,
   "cell_lines=s" => \$cell_lines,
@@ -916,6 +917,72 @@ while(<CCLECNA>){
 close CCLECNA;
 
 
+# =============================== #
+# Process the expression z-scores
+# =============================== #
+
+# reset these so we can reuse for expression
+%cell_lines_seen = ();
+%genes_seen = ();
+
+my %wtsi_exprn_z;		# store: -1/0/1 for under/normal/overexpression
+
+# Open and read the CCLE CNA file
+open EXPRNZ, "< $wtsi_expression_z_data" or die "Can't read expression z-scores file $wtsi_expression_z_data: $!\n";
+
+
+# gene	expression.z	cell.line
+# CHEK2_11200_ENSG00000183765	NA	SW13_ADRENAL_GLAND
+# CHEK2_11200_ENSG00000183765	-2.00063333901991	NH12_AUTONOMIC_GANGLIA
+# CHEK2_11200_ENSG00000183765	-1.10868384234017	CHP212_AUTONOMIC_GANGLIA
+
+$header = <EXPRNZ>;
+
+while(<EXPRNZ>){
+
+  my @fields = split(/\t/);
+  my $standard_gene = $fields[0];
+  my $exprnz = $fields[1];
+  my $standard_cell_line = $fields[2];
+  
+  chomp $standard_cell_line;
+  $standard_gene =~ s/^([^_]+)_([^_]+)_/$1\t$2\t/; # replace the underscores following the symbol and EntrezGeneID for tabs
+  next if $exprnz =~ /NA/;
+  
+  # lookup gene and cell line name in dictionaries
+
+  # skip processing this variant if the gene symbol is not in the set of output genes
+  if(!exists $output_genes{$standard_gene}){
+    print "Skipping expression for gene: $standard_gene\n";
+    next;
+  }
+
+  my $wtsi_key = "$standard_cell_line\t$standard_gene";
+  
+  $cell_lines_seen{$standard_cell_line} = 1;
+  $genes_seen{$standard_gene} = 1;
+  
+  # update the master record of all cell lines and genes seen
+  if(exists($master_cell_lines_seen{$standard_cell_line})){
+  	$master_cell_lines_seen{$standard_cell_line} .= "\texprn";
+  }
+  else{
+  	$master_cell_lines_seen{$standard_cell_line} = "\texprn";
+  }
+  $master_genes_seen{$standard_gene} = 1;
+
+  if($exprnz >= 2){	# overexpressed
+    $wtsi_exprn_z{$wtsi_key} = 1;
+  }
+  elsif($exprnz <= -2){ # underexpressed
+    $wtsi_exprn_z{$wtsi_key} = -1;
+  }
+  else{
+    $wtsi_exprn_z{$wtsi_key} = 0;
+  }
+} # finished reading file, close
+close EXPRNZ;
+
 
 # ==================================== #
 # Process the hashes to format outputs
@@ -932,17 +999,17 @@ my @genes_seen = keys %output_genes;		# the list of genes from CGC and C5000
 # We need to indicate which data sets were available (mut, cna or mut_cna) as a column
 # in the output.
 
-my $output_data = '';
-my $mutation_matrix = '';
-my $other_matrix = '';
-my $mutation_classification = '';
+my $output_data = '';				# detailed output with separate columns for truncs, hotspots, others, CNAs and expression 
+my $mutation_matrix = '';			# the functionally relevant changes
+my $other_matrix = '';				# all changes regardless of relevance
+my $mutation_classification = '';	# del=5,amp=4,trunc_hom=3,trunc_het=2,miss=1,overexpr=6,underexpr=7,wt=0
 
 my $output_header = "cell_line\tdatasets";
 my $matrix_header = "cell_line";
 foreach my $seen_gene (@genes_seen){	# The CGC and C5000s sets
   my $seen_gene_header = $seen_gene;
   $seen_gene_header =~ s/\t/_/g;
-  $output_header .= "\t$seen_gene_header (trunc)\t$seen_gene_header (rec_mis)\t$seen_gene_header (other)\t$seen_gene_header (gistic)";
+  $output_header .= "\t$seen_gene_header (trunc)\t$seen_gene_header (rec_mis)\t$seen_gene_header (other)\t$seen_gene_header (gistic)\t$seen_gene_header (exprnz)";
   $matrix_header .= "\t$seen_gene_header";
 }
 $output_header .= "\n";
@@ -951,21 +1018,17 @@ $matrix_header .= "\n";
 
 #foreach my $seen_cell_line (@cell_lines_seen){ # from keys %master_cell_lines_seen
 while(my ($seen_cell_line, $cell_line_seen_in_dataset) = each  %master_cell_lines_seen){
-  my $datasets = undef;
-  if($cell_line_seen_in_dataset =~ /\tmut/){
-    if($cell_line_seen_in_dataset =~ /\tCNA/){
-      $datasets = 'mutation_CNA';
-    }
-    else{
-      $datasets = 'mutation';
-    }
+  my $datasets = "";
+  if($cell_line_seen_in_dataset =~ /mut/){
+    $datasets .= 'mut_'
   }
-  elsif($cell_line_seen_in_dataset =~ /\tCNA/){
-    $datasets = 'CNA';
+  if($cell_line_seen_in_dataset =~ /CNA/){
+    $datasets .= 'CNA_'
   }
-  else{
-    $datasets = 'none';
+  if($cell_line_seen_in_dataset =~ /exprn/){
+    $datasets .= 'expression_'
   }
+  
   $output_data .= "$seen_cell_line\t$datasets";
   $mutation_matrix .= "$seen_cell_line";
   $other_matrix .= "$seen_cell_line";
@@ -980,6 +1043,7 @@ while(my ($seen_cell_line, $cell_line_seen_in_dataset) = each  %master_cell_line
     my $trunc = 0;
     my $rec_mis = 0;
     my $other = 0;
+    my $exprn = 0;
     
     if(exists($ccle_truncs{$hash_key}) || exists($cos_truncs{$hash_key}) || exists($icr_truncs{$hash_key}) || exists($biankin_truncs{$hash_key}) || exists($wtsi_truncs{$hash_key})){
       $output_data .= "\t1";
@@ -988,6 +1052,7 @@ while(my ($seen_cell_line, $cell_line_seen_in_dataset) = each  %master_cell_line
     else{
       $output_data .= "\t0";
     }
+    
     if(exists($ccle_rec_mis{$hash_key}) || exists($cos_rec_mis{$hash_key}) || exists($icr_rec_mis{$hash_key}) || exists($biankin_rec_mis{$hash_key}) || exists($wtsi_rec_mis{$hash_key})){
       $output_data .= "\t1";
       $rec_mis = 1;
@@ -995,6 +1060,7 @@ while(my ($seen_cell_line, $cell_line_seen_in_dataset) = each  %master_cell_line
     else{
       $output_data .= "\t0";
     }
+    
     if(exists($ccle_other{$hash_key}) || exists($cos_other{$hash_key}) || exists($icr_other{$hash_key}) || exists($biankin_other{$hash_key}) || exists($wtsi_other{$hash_key})){
       $output_data .= "\t1";
       $other = 1;
@@ -1002,6 +1068,7 @@ while(my ($seen_cell_line, $cell_line_seen_in_dataset) = each  %master_cell_line
     else{
       $output_data .= "\t0";
     }
+    
     if(exists($ccle_cnas{$hash_key})){
       $output_data .= "\t$ccle_cnas{$hash_key}";
       if($ccle_cnas{$hash_key} == -2){
@@ -1026,18 +1093,26 @@ while(my ($seen_cell_line, $cell_line_seen_in_dataset) = each  %master_cell_line
     else{
       $output_data .= "\tNA";
     }
+   
+    if(exists($wtsi_exprn_z{$hash_key})){
+      $output_data .= "\t$wtsi_exprn_z{$hash_key}";
+      $exprn = $wtsi_exprn_z{$hash_key};
+    }
+    else{
+      $output_data .= "\t0";
+    }
     
     # now decide how to classify the cell line / gene...
     
     my $matrix_value = 0;
     
     if($output_genes{$seen_gene} eq 'OG'){
-      if($rec_mis == 1 || $amp == 1){
+      if($rec_mis == 1 || $amp == 1 || $exprn == 1){
         $matrix_value = 1;
       }
     }
     elsif($output_genes{$seen_gene} eq 'TSG'){
-      if($rec_mis == 1 || $hom_del == 1 || $trunc == 1){
+      if($rec_mis == 1 || $hom_del == 1 || $trunc == 1 || $exprn == -1){
         $matrix_value = 1;
       }
     }
@@ -1063,6 +1138,8 @@ while(my ($seen_cell_line, $cell_line_seen_in_dataset) = each  %master_cell_line
     # 3: hom trunc in TSG
     # 2: het trunc
     # 1: rec missense
+    # 7: underexpressed
+    # 6: overexpressed
     # 0: none
     
     if($output_genes{$seen_gene} eq 'OG' && $amp == 1){
@@ -1079,6 +1156,12 @@ while(my ($seen_cell_line, $cell_line_seen_in_dataset) = each  %master_cell_line
     }
     elsif($rec_mis == 1){
       $mutation_classification .= "\t1";
+    }
+    elsif($output_genes{$seen_gene} eq 'OG' && $exprn == 1){
+      $mutation_classification .= "\t6";
+    }
+    elsif($output_genes{$seen_gene} eq 'TSG' && $exprn == -1){
+      $mutation_classification .= "\t7";
     }
     else{
       $mutation_classification .= "\t0";
@@ -1121,20 +1204,24 @@ Usage:
 perl process_mutation_data.pl [options]
 
 Options
---help			Display this message and quit
---ccle_data		Path to the CCLE maf file [required]
---cosmic_data	Path to the COSMIC mutations file [required]
---vcf_data		Path to the ICR mutation data [required]
---wtsi_data		Path to the WTSI 98 cell line data [required]
---ccle_cna		Path to the gistic CCLE CN calls from cBioPortal[required]
---mut_freqs		Path to the processed Davoli data [required]
---genes			Path to the gene name dictionary [required]
---cell_lines	Path to the cell line name dictionary [required]
---output		Path to output. Defaults to ccle_data.proc [optional]
+  --help					Display this message and quit
+  --ccle_muts				Path to the CCLE maf file [required]
+  --cosmic_muts				Path to the COSMIC mutations file [required]
+  --vcf_muts				Path to the ICR mutation data [required]
+  --ccle_cna				Path to the gistic CCLE CN calls from cBioPortal[required]
+  --wtsi_muts				Path to the WTSI mutation[required]
+  --biankin_muts			Path to the Biankin lab mutation data [required]
+  --wtsi_expression_z_data	Path to the processed WTSI expression data [required]
+  --mut_freqs				Path to the processed Davoli data [required]
+  --genes					Path to the gene name dictionary [required]
+  --cell_lines				Path to the cell line name dictionary [required]
+  --output					Path to output. Defaults to ccle_data.proc [optional]
+  --output_genes_list		Path to the list of genes requested [required]
 END
 
   print $usage;
 }
+
 
 
 
