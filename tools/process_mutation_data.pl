@@ -90,10 +90,18 @@ open MFRQ, "< $mut_freqs" or die "Can't read mutation frequency information file
 
 my %mut_freqs;
 while(<MFRQ>){
-  my ($gene_name, $prot_pos, $var_type, $freq) = split(/\t/);
-  chomp($freq);
+  my ($gene_name, $prot_pos, $freq, $gene_seq_count) = split(/\t/);
+  chomp($gene_seq_count);
+  
+  my $three_percent_of_seq_counts = $gene_seq_count * 0.03;
+  
+  my $threshold = (3, $three_percent_of_seq_counts)[3 < $three_percent_of_seq_counts]; # find max of 3 or $three_percent_of_seq_counts
+  
   my $key = "$gene_name\t$prot_pos";
-  $mut_freqs{$key} = $freq;
+  
+  if($freq >= $threshold){
+    $mut_freqs{$key} = $freq;
+  }
 }
 
 close MFRQ;
@@ -366,7 +374,12 @@ while(<MUTS>){
   elsif($mutation_consequences{$var_class} eq "aa_sub"){
     # check if the mutation is recurrent as per Davoli
     my @identifiers = split(/\t/, $standard_gene);
-    my $davoli_key = "$identifiers[0]\t$prot_change";
+    my $prot_position = $prot_change;
+    $prot_position =~ s/^p\.[A-Z]+//;
+    $prot_position =~ s/[^\d].*//;
+    
+    
+    my $davoli_key = "$identifiers[0]\t$prot_position";
     if(exists($mut_freqs{$davoli_key})){
       $ccle_rec_mis{$ccle_key} ++;
     }
@@ -486,7 +499,12 @@ while(<COS>){
   }
   elsif($mutation_consequences{$var_class} eq "aa_sub"){
     # check if the mutation is recurrent as per Davoli
-    my $davoli_key = "$entrez_gene\t$prot_change";
+    
+    my $prot_position = $prot_change;
+    $prot_position =~ s/^p\.[A-Z]+//;
+    $prot_position =~ s/[^\d].*//;
+    
+    my $davoli_key = "$entrez_gene\t$prot_position";
     if(exists($mut_freqs{$davoli_key})){
       $cos_rec_mis{$cos_key} ++;
     }
@@ -593,7 +611,13 @@ while(<ICR>){
   elsif($mutation_consequences{$var_class} eq "aa_sub"){
     # check if the mutation is recurrent as per Davoli
     my @identifiers = split(/\t/, $standard_gene);
-    my $davoli_key = "$identifiers[0]\t$prot_change";
+
+    my $prot_position = $prot_change;
+    $prot_position =~ s/^p\.[A-Z]+//;
+    $prot_position =~ s/[^\d].*//;
+    
+    my $davoli_key = "$identifiers[0]\t$prot_position";
+
     if(exists($mut_freqs{$davoli_key})){
       $icr_rec_mis{$icr_key} ++;
     }
@@ -699,7 +723,13 @@ while(<BIANKIN>){
   elsif($mutation_consequences{$var_class} eq "aa_sub"){
     # check if the mutation is recurrent as per Davoli
     my @identifiers = split(/\t/, $standard_gene);
-    my $davoli_key = "$identifiers[0]\t$prot_change";
+
+
+    my $prot_position = $prot_change;
+    $prot_position =~ s/^p\.[A-Z]+//;
+    $prot_position =~ s/[^\d].*//;
+    
+    my $davoli_key = "$identifiers[0]\t$prot_position";
     if(exists($mut_freqs{$davoli_key})){
       $biankin_rec_mis{$biankin_key} ++;
     }
@@ -826,7 +856,12 @@ while(<WTSI>){
   }
   elsif($mutation_consequences{$var_class} eq "aa_sub"){
     # check if the mutation is recurrent as per Davoli
-    my $davoli_key = "$entrez_gene\t$prot_change";
+
+    my $prot_position = $prot_change;
+    $prot_position =~ s/^p\.[A-Z]+//;
+    $prot_position =~ s/[^\d].*//;
+
+    my $davoli_key = "$entrez_gene\t$prot_position";
     if(exists($mut_freqs{$davoli_key})){
       $wtsi_rec_mis{$wtsi_key} ++;
     }
