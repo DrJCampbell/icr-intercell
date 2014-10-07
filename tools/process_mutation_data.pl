@@ -51,6 +51,16 @@ if(defined($help)) {
 
 $output = "combined_mutation_data_table.txt" unless defined $output;
 
+
+# ================================================================ #
+# this will be a hash of hashes to store the mutation details for
+# all gene_celllines in each data set. Primary keys are cell_line
+# and gene. Secondary keys are data sources (eg. comsic_mut)
+# ================================================================ #
+ my %details_table = ();
+
+
+
 # ============================== #
 # read cell line name dictionary #
 # ============================== #
@@ -490,21 +500,16 @@ while(<COS>){
   }
   $master_genes_seen{$standard_gene} = 1;
 
-#  
-#  print "VARCLASS = $var_class\n";
-#  
+  my $prot_position = $prot_change;
+  $prot_position =~ s/^p\.[A-Z]+//;
+  $prot_position =~ s/[^\d].*//;  
+  my $davoli_key = "$entrez_gene\t$prot_position";
   
   if($mutation_consequences{$var_class} eq "trunc"){	# if mutation is truncating
     $cos_truncs{$cos_key} ++;							# increment cellline+gene truncating count
   }
   elsif($mutation_consequences{$var_class} eq "aa_sub"){
     # check if the mutation is recurrent as per Davoli
-    
-    my $prot_position = $prot_change;
-    $prot_position =~ s/^p\.[A-Z]+//;
-    $prot_position =~ s/[^\d].*//;
-    
-    my $davoli_key = "$entrez_gene\t$prot_position";
     if(exists($mut_freqs{$davoli_key})){
       $cos_rec_mis{$cos_key} ++;
     }
@@ -512,6 +517,29 @@ while(<COS>){
       $cos_other{$cos_key} ++;
     }
   }
+  
+  # collect the details for later output:
+  if(exists $details_table{$cos_key}{"cos_mut"}){
+    $details_table{$cos_key}{"cos_mut"} .=  "; $prot_change";
+    if(exists($mut_freqs{$davoli_key})){
+      $details_table{$cos_key}{"davoli_freq"} .= "; $mut_freqs{$davoli_key}";
+    }
+    else{
+      $details_table{$cos_key}{"davoli_freq"} .= "; NA";
+    }
+  }
+  else{
+    $details_table{$cos_key}{"cos_mut"} =  $prot_change;
+    if(exists($mut_freqs{$davoli_key})){
+      $details_table{$cos_key}{"davoli_freq"} = "$mut_freqs{$davoli_key}";
+    }
+    else{
+      $details_table{$cos_key}{"davoli_freq"} = "NA";
+    }
+  }
+  
+  
+  
 } # finished reading file, close
 close COS;
 
@@ -1225,6 +1253,31 @@ close OTHERMAT;
 open MUTCLASS, "> $output.mutation_classifications.txt" or die "Can't write to mutation classification output file $output: $!\n";
 print MUTCLASS "$matrix_header$mutation_classification";
 close MUTCLASS;
+
+
+open DETAILS, "> $output.details" or die "Can't write details to $output:$! \n";
+my @details_keys = keys %details_table;
+foreach my $details_key (@details_keys){
+  print DETAILS "$details_key";
+  if(exists $details_table{$details_key}{"cos_mut"}){
+    print DETAILS "\t$details_table{$details_key}{'cos_mut'}";
+  }
+  else{
+    print DETAILS "\tNA";
+  }
+  if(exists $details_table{$details_key}{"cos_mut"}){
+    print DETAILS "\t$details_table{$details_key}{'davoli_freq'}";
+  }
+  else{
+    print DETAILS "\tNA";
+  }
+  print DETAILS "\n";
+}
+
+close DETAILS;
+
+
+
 
 
 sub usage() {
