@@ -517,24 +517,27 @@ while(<COS>){
       $cos_other{$cos_key} ++;
     }
   }
-  
+
+
   # collect the details for later output:
   if(exists $details_table{$cos_key}{"cos_mut"}){
     $details_table{$cos_key}{"cos_mut"} .=  "; $prot_change";
+    $details_table{$cos_key}{"cos_type"} .=  "; $mutation_consequences{$var_class}";
     if(exists($mut_freqs{$davoli_key})){
-      $details_table{$cos_key}{"davoli_freq"} .= "; $mut_freqs{$davoli_key}";
+      $details_table{$cos_key}{"cos_davoli_freq"} .= "; $mut_freqs{$davoli_key}";
     }
     else{
-      $details_table{$cos_key}{"davoli_freq"} .= "; NA";
+      $details_table{$cos_key}{"cos_davoli_freq"} .= "; NA";
     }
   }
   else{
     $details_table{$cos_key}{"cos_mut"} =  $prot_change;
+    $details_table{$cos_key}{"cos_type"} .=  $mutation_consequences{$var_class};
     if(exists($mut_freqs{$davoli_key})){
-      $details_table{$cos_key}{"davoli_freq"} = "$mut_freqs{$davoli_key}";
+      $details_table{$cos_key}{"cos_davoli_freq"} = "$mut_freqs{$davoli_key}";
     }
     else{
-      $details_table{$cos_key}{"davoli_freq"} = "NA";
+      $details_table{$cos_key}{"cos_davoli_freq"} = "NA";
     }
   }
   
@@ -633,19 +636,20 @@ while(<ICR>){
   }
   $master_genes_seen{$standard_gene} = 1;
 
+
+  my $prot_position = $prot_change;
+  $prot_position =~ s/^p\.[A-Z]+//;
+  $prot_position =~ s/[^\d].*//;
+  my @identifiers = split(/\t/, $standard_gene);
+  my $davoli_key = "$identifiers[0]\t$prot_position";
+
+
   if($mutation_consequences{$var_class} eq "trunc"){	# if mutation is truncating
     $icr_truncs{$icr_key} ++;							# increment cellline+gene truncating count
   }
   elsif($mutation_consequences{$var_class} eq "aa_sub"){
     # check if the mutation is recurrent as per Davoli
-    my @identifiers = split(/\t/, $standard_gene);
-
-    my $prot_position = $prot_change;
-    $prot_position =~ s/^p\.[A-Z]+//;
-    $prot_position =~ s/[^\d].*//;
     
-    my $davoli_key = "$identifiers[0]\t$prot_position";
-
     if(exists($mut_freqs{$davoli_key})){
       $icr_rec_mis{$icr_key} ++;
     }
@@ -653,6 +657,29 @@ while(<ICR>){
       $icr_other{$icr_key} ++;
     }
   }
+  
+  # collect the details for later output:
+  if(exists $details_table{$icr_key}{"icr_mut"}){
+    $details_table{$icr_key}{"icr_mut"} .=  "; $prot_change";
+    $details_table{$icr_key}{"icr_type"} .=  "; $mutation_consequences{$var_class}";
+    if(exists($mut_freqs{$davoli_key})){
+      $details_table{$icr_key}{"icr_davoli_freq"} .= "; $mut_freqs{$davoli_key}";
+    }
+    else{
+      $details_table{$icr_key}{"icr_davoli_freq"} .= "; NA";
+    }
+  }
+  else{
+    $details_table{$icr_key}{"icr_mut"} =  $prot_change;
+    $details_table{$icr_key}{"icr_type"} .=  $mutation_consequences{$var_class};
+    if(exists($mut_freqs{$davoli_key})){
+      $details_table{$icr_key}{"icr_davoli_freq"} = "$mut_freqs{$davoli_key}";
+    }
+    else{
+      $details_table{$icr_key}{"icr_davoli_freq"} = "NA";
+    }
+  }
+  
 } # finished reading file, close
 close ICR;
 
@@ -745,19 +772,18 @@ while(<BIANKIN>){
   }
   $master_genes_seen{$standard_gene} = 1;
 
+  my $prot_position = $prot_change;
+  $prot_position =~ s/^p\.[A-Z]+//;
+  $prot_position =~ s/[^\d].*//;
+  my @identifiers = split(/\t/, $standard_gene);
+  my $davoli_key = "$identifiers[0]\t$prot_position";
+
   if($mutation_consequences{$var_class} eq "trunc"){	# if mutation is truncating
     $biankin_truncs{$biankin_key} ++;					# increment cellline+gene truncating count
   }
   elsif($mutation_consequences{$var_class} eq "aa_sub"){
     # check if the mutation is recurrent as per Davoli
-    my @identifiers = split(/\t/, $standard_gene);
-
-
-    my $prot_position = $prot_change;
-    $prot_position =~ s/^p\.[A-Z]+//;
-    $prot_position =~ s/[^\d].*//;
-    
-    my $davoli_key = "$identifiers[0]\t$prot_position";
+   
     if(exists($mut_freqs{$davoli_key})){
       $biankin_rec_mis{$biankin_key} ++;
     }
@@ -765,6 +791,29 @@ while(<BIANKIN>){
       $biankin_other{$biankin_key} ++;
     }
   }
+  
+  # collect the details for later output:
+  if(exists $details_table{$biankin_key}{"biankin_mut"}){
+    $details_table{$biankin_key}{"biankin_mut"} .=  "; $prot_change";
+    $details_table{$biankin_key}{"biankin_type"} .=  "; $mutation_consequences{$var_class}";
+    if(exists($mut_freqs{$davoli_key})){
+      $details_table{$biankin_key}{"biankin_davoli_freq"} .= "; $mut_freqs{$davoli_key}";
+    }
+    else{
+      $details_table{$biankin_key}{"biankin_davoli_freq"} .= "; NA";
+    }
+  }
+  else{
+    $details_table{$biankin_key}{"biankin_mut"} =  $prot_change;
+    $details_table{$biankin_key}{"biankin_type"} .=  $mutation_consequences{$var_class};
+    if(exists($mut_freqs{$davoli_key})){
+      $details_table{$biankin_key}{"biankin_davoli_freq"} = "$mut_freqs{$davoli_key}";
+    }
+    else{
+      $details_table{$biankin_key}{"biankin_davoli_freq"} = "NA";
+    }
+  }
+  
 } # finished reading file, close
 close BIANKIN;
 
@@ -879,17 +928,16 @@ while(<WTSI>){
   }
   $master_genes_seen{$standard_gene} = 1;
 
+  my $prot_position = $prot_change;
+  $prot_position =~ s/^p\.[A-Z]+//;
+  $prot_position =~ s/[^\d].*//;
+  my $davoli_key = "$entrez_gene\t$prot_position";
+
   if($mutation_consequences{$var_class} eq "trunc"){	# if mutation is truncating
     $wtsi_truncs{$wtsi_key} ++;							# increment cellline+gene truncating count
   }
   elsif($mutation_consequences{$var_class} eq "aa_sub"){
     # check if the mutation is recurrent as per Davoli
-
-    my $prot_position = $prot_change;
-    $prot_position =~ s/^p\.[A-Z]+//;
-    $prot_position =~ s/[^\d].*//;
-
-    my $davoli_key = "$entrez_gene\t$prot_position";
     if(exists($mut_freqs{$davoli_key})){
       $wtsi_rec_mis{$wtsi_key} ++;
     }
@@ -903,6 +951,29 @@ while(<WTSI>){
   elsif($mutation_consequences{$var_class} eq "amplification"){
     $wtsi_cnas{$wtsi_key} = 2; # amp
   }
+  
+  # collect the details for later output:
+  if(exists $details_table{$wtsi_key}{"wtsi_mut"}){
+    $details_table{$wtsi_key}{"wtsi_mut"} .=  "; $prot_change";
+    $details_table{$wtsi_key}{"wtsi_type"} .=  "; $mutation_consequences{$var_class}";
+    if(exists($mut_freqs{$davoli_key})){
+      $details_table{$wtsi_key}{"wtsi_davoli_freq"} .= "; $mut_freqs{$davoli_key}";
+    }
+    else{
+      $details_table{$wtsi_key}{"wtsi_davoli_freq"} .= "; NA";
+    }
+  }
+  else{
+    $details_table{$wtsi_key}{"wtsi_mut"} =  $prot_change;
+    $details_table{$wtsi_key}{"wtsi_type"} .=  $mutation_consequences{$var_class};
+    if(exists($mut_freqs{$davoli_key})){
+      $details_table{$wtsi_key}{"wtsi_davoli_freq"} = "$mut_freqs{$davoli_key}";
+    }
+    else{
+      $details_table{$wtsi_key}{"wtsi_davoli_freq"} = "NA";
+    }
+  }
+  
 } # finished reading file, close
 close WTSI;
 
@@ -973,7 +1044,14 @@ while(<CCLECNA>){
     my $ccle_cna_key = "$standard_cell_line\t$standard_gene";
 
     $ccle_cnas{$ccle_cna_key} = $cna;
-        
+    
+    # add the CCLE CNA to the details table hash
+    if(exists $details_table{$ccle_cna_key}{"ccle_cna"}){
+      $details_table{$ccle_cna_key}{"ccle_cna"} .= "; $cna";
+    }
+    else{
+      $details_table{$ccle_cna_key}{"ccle_cna"} = "$cna";
+    }    
   }
 
 } # finished reading file, close
@@ -1043,6 +1121,16 @@ while(<EXPRNZ>){
   else{
     $wtsi_exprn_z{$wtsi_key} = 0;
   }
+  
+  # add expression z-scores to the detail table hash
+  if(exists $details_table{$wtsi_key}{'exprnz'}){
+    $details_table{$wtsi_key}{'exprnz'} .= "; $exprnz";
+  }
+  else{
+    $details_table{$wtsi_key}{'exprnz'} = $exprnz;
+  }
+  
+  
 } # finished reading file, close
 close EXPRNZ;
 
@@ -1255,22 +1343,160 @@ print MUTCLASS "$matrix_header$mutation_classification";
 close MUTCLASS;
 
 
+# In addition to the primary key ("$standard_cell_line\t$standard_gene"),
+# the secondary keys for %details_table include:
+# cos_mut
+# cos_type
+# cos_davoli_freq
+# icr_mut
+# icr_type
+# icr_davoli_freq
+# biankin_mut
+# biankin_type
+# biankin_davoli_freq
+# wtsi_mut
+# wtsi_type
+# wtsi_davoli_freq
+# ccle_cna
+# exprnz
+
 open DETAILS, "> $output.details" or die "Can't write details to $output:$! \n";
+
+print DETAILS "cell_line\tgene_symbol\tEntrez_geneID\tEnsembl_GeneID\tCOSMIC_mutation\tCOSMIC_consequence\tCOSMIC_Davoli\tICR_mutation\tICR_consequence\tICR_Davoli\tBIAKN_mutation\tBIAKN_consequence\tBIANK_Davoli\tWTSI_mutation\tWTSI_consequence\tWTSI_Davoli\tCCLE_CNA\tExprnZ\n";
+
 my @details_keys = keys %details_table;
 foreach my $details_key (@details_keys){
   print DETAILS "$details_key";
+
+# cos_mut
   if(exists $details_table{$details_key}{"cos_mut"}){
+    chomp($details_table{$details_key}{'cos_mut'});
     print DETAILS "\t$details_table{$details_key}{'cos_mut'}";
   }
   else{
     print DETAILS "\tNA";
   }
-  if(exists $details_table{$details_key}{"cos_mut"}){
-    print DETAILS "\t$details_table{$details_key}{'davoli_freq'}";
+  
+# cos_type
+  if(exists $details_table{$details_key}{"cos_type"}){
+    chomp($details_table{$details_key}{"cos_type"});
+    print DETAILS "\t$details_table{$details_key}{'cos_type'}";
   }
   else{
     print DETAILS "\tNA";
   }
+
+# cos_davoli_freq
+  if(exists $details_table{$details_key}{"cos_davoli_freq"}){
+    chomp($details_table{$details_key}{"cos_davoli_freq"});
+    print DETAILS "\t$details_table{$details_key}{'cos_davoli_freq'}";
+  }
+  else{
+    print DETAILS "\tNA";
+  }
+
+# icr_mut
+  if(exists $details_table{$details_key}{"icr_mut"}){
+    chomp($details_table{$details_key}{"icr_mut"});
+    
+    $details_table{$details_key}{"icr_mut"} =~ s/[\r\n]+//g;
+    
+    print DETAILS "\t$details_table{$details_key}{'icr_mut'}";
+  }
+  else{
+    print DETAILS "\tNA";
+  }
+
+# icr_type
+  if(exists $details_table{$details_key}{"icr_type"}){
+    chomp($details_table{$details_key}{"icr_type"});
+    print DETAILS "\t$details_table{$details_key}{'icr_type'}";
+  }
+  else{
+    print DETAILS "\tNA";
+  }
+
+# icr_davoli_freq
+  if(exists $details_table{$details_key}{"icr_davoli_freq"}){
+    chomp($details_table{$details_key}{"icr_davoli_freq"});
+    print DETAILS "\t$details_table{$details_key}{'icr_davoli_freq'}";
+  }
+  else{
+    print DETAILS "\tNA";
+  }
+
+# biankin_mut
+  if(exists $details_table{$details_key}{"biankin_mut"}){
+    chomp($details_table{$details_key}{"biankin_mut"});
+    print DETAILS "\t$details_table{$details_key}{'biankin_mut'}";
+  }
+  else{
+    print DETAILS "\tNA";
+  }
+
+# biankin_type
+  if(exists $details_table{$details_key}{"biankin_type"}){
+    chomp($details_table{$details_key}{'biankin_type'});
+    print DETAILS "\t$details_table{$details_key}{'biankin_type'}";
+  }
+  else{
+    print DETAILS "\tNA";
+  }
+
+# biankin_davoli_freq
+  if(exists $details_table{$details_key}{"biankin_davoli_freq"}){
+    chomp($details_table{$details_key}{"biankin_davoli_freq"});
+    print DETAILS "\t$details_table{$details_key}{'biankin_davoli_freq'}";
+  }
+  else{
+    print DETAILS "\tNA";
+  }
+
+# wtsi_mut
+  if(exists $details_table{$details_key}{"wtsi_mut"}){
+    chomp($details_table{$details_key}{"wtsi_mut"});
+    print DETAILS "\t$details_table{$details_key}{'wtsi_mut'}";
+  }
+  else{
+    print DETAILS "\tNA";
+  }
+
+# wtsi_type
+  if(exists $details_table{$details_key}{"wtsi_type"}){
+    chomp($details_table{$details_key}{"wtsi_type"});
+    print DETAILS "\t$details_table{$details_key}{'wtsi_type'}";
+  }
+  else{
+    print DETAILS "\tNA";
+  }
+
+# wtsi_davoli_freq
+  if(exists $details_table{$details_key}{"wtsi_davoli_freq"}){
+    chomp($details_table{$details_key}{"wtsi_davoli_freq"});
+    print DETAILS "\t$details_table{$details_key}{'wtsi_davoli_freq'}";
+  }
+  else{
+    print DETAILS "\tNA";
+  }
+
+# ccle_cna
+  if(exists $details_table{$details_key}{"ccle_cna"}){
+    chomp($details_table{$details_key}{"ccle_cna"});
+    print DETAILS "\t$details_table{$details_key}{'ccle_cna'}";
+  }
+  else{
+    print DETAILS "\tNA";
+  }
+
+# exprnz
+  if(exists $details_table{$details_key}{"exprnz"}){
+    chomp($details_table{$details_key}{"exprnz"});
+    print DETAILS "\t$details_table{$details_key}{'exprnz'}";
+  }
+  else{
+    print DETAILS "\tNA";
+  }
+
   print DETAILS "\n";
 }
 
