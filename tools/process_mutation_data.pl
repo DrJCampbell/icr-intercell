@@ -4,13 +4,6 @@
 # read data from CCLE etc, count mutations
 # by type for each gene and cell line
 # jamesc@icr.ac.uk, 25th July 2014
-#
-# To look at the contribution of each data
-# to the outcome, set dummy empty files for
-# the given data set to exclude and run as
-# normal. The dummy file could include the
-# normal header and one gene that is not in
-# the list of genes to output.
 # ========================================= #
 
 use strict;
@@ -35,14 +28,6 @@ GetOptions (
   "help" => \$help,
  );
 
-# what to do with $output_genes_list?
-# give a list of gene symbols,
-# convert to the standardised list
-# include in the list if the gene
-# is a TSG or an OG. Use this info
-# to determine what to count when
-# outputing matrices
-
 # print usage message if requested
 if(defined($help)) {
   &usage;
@@ -60,60 +45,50 @@ $output = "combined_mutation_data_table.txt" unless defined $output;
  my %details_table = ();
 
 
-
 # ============================== #
 # read cell line name dictionary #
 # ============================== #
 
 open CL, "< $cell_lines" or die "Can't read cell line name dictionary $cell_lines: $!\n";
-
 my %cell_lines;
-
 while(<CL>){
   next if /^#/;
   my ($cell_line, $standard_cell_line, $source) = split(/\t/);
   $cell_lines{$cell_line} = $standard_cell_line;
 }
-
 close CL;
+
 
 # ========================= #
 # read gene name dictionary #
 # ========================= #
+
 open GN, "< $genes" or die "Can't read gene name dictionary $genes: $!\n";
-
 my %genes;
-
 while(<GN>){
   next if /^#/;
   my ($gene_alias, $standard_gene_name) = split(/\t/);
   chomp($standard_gene_name);
   $genes{$gene_alias} = $standard_gene_name;
 }
-
 close GN;
 
 # =================================== #
 # read in the mutation frequency data #
 # =================================== #
-open MFRQ, "< $mut_freqs" or die "Can't read mutation frequency information file $mut_freqs: $!\n";
 
+open MFRQ, "< $mut_freqs" or die "Can't read mutation frequency information file $mut_freqs: $!\n";
 my %mut_freqs;
 while(<MFRQ>){
   my ($gene_name, $prot_pos, $freq, $gene_seq_count) = split(/\t/);
   chomp($gene_seq_count);
-  
   my $three_percent_of_seq_counts = $gene_seq_count * 0.03;
-  
   my $threshold = (3, $three_percent_of_seq_counts)[3 < $three_percent_of_seq_counts]; # find max of 3 or $three_percent_of_seq_counts
-  
   my $key = "$gene_name\t$prot_pos";
-  
   if($freq >= $threshold){
     $mut_freqs{$key} = $freq;
   }
 }
-
 close MFRQ;
 
 
@@ -122,8 +97,7 @@ close MFRQ;
 # output at the end and standardise    #
 # ==================================== #
 
-# this has changed since the original version
-# we now have upto three identifiers for each gene
+# we have three identifiers for each gene
 # 	the gene symbol (e.g. EIF1AX)
 # 	the EntrezGene ID (e.g. 101060318)
 # 	the ensembl gene ID(s) (e.g. ENSG00000173674_ENSG00000198692)
@@ -137,17 +111,11 @@ my %output_genes;
 my %symbol_to_output_genes;
 my %entrez_to_output_genes;
 my %ensembl_to_output_genes;
-
 while(<OUTGENES>){
   next if /^#/;
   next if /^[\r\n]/; # skip blank lines
   my ($symbol, $entrez, $ensembl, $type) = split /\t/;
   chomp($type);
-  #my $standard_gene = $gene;
-  #if(exists($genes{$gene})){
-  #  $standard_gene = $genes{$gene};
-  #}
-  #$output_genes{$standard_gene} = $type;
   my @ensembls = split(/_/, $ensembl);
   $output_genes{"$symbol\t$entrez\t$ensembl"} = $type;
   $symbol_to_output_genes{$symbol} = "$symbol\t$entrez\t$ensembl";
@@ -155,7 +123,6 @@ while(<OUTGENES>){
   foreach my $this_ensembl (@ensembls){
     $ensembl_to_output_genes{$this_ensembl} = "$symbol\t$entrez\t$ensembl";
   }
-
 }
 close OUTGENES;
 
@@ -267,76 +234,59 @@ my %mutation_consequences = (
 	"Substitution - coding silent" => "non_coding",
 	"Substitution - Missense" => "aa_sub",
 	"Substitution - Nonsense" => "trunc",
-	"Unknown" => "unknown"
+	"Unknown" => "unknown",
+	"complex sub" => 'aa_sub',				# Added for Osteosarcoma lines
+	"downstream" => 'non_coding',
+	"ess splice" => 'trunc',
+	"frameshift" => 'trunc',
+	"inframe" => 'aa_sub',
+	"inframe_deletion" => 'aa_sub',
+	"inframe_insertion" => 'aa_sub',
+	"intergenic" => 'non_coding',
+	"intronic" => 'non_coding',
+	"missense" => 'aa_sub',
+	"nonsense" => 'trunc',
+	"Silent" => 'non_coding',
+	"start-lost" => 'aa_sub',
+	"stop_lost" => 'aa_sub',
+	"stop-lost" => 'aa_sub',
+	"unknown" => 'non_coding',
+	"upstream" => 'non_coding'
 	);
 
 
 
-# ====================================================== #
-# Want a table with one row per cell line and one column
-# per (gene*consequence). The consequences could be like
-# truncating (fs,*,ess) / recurrent missense / other
-# 
-# How can we represent more complex data such as position
-# of mutations in a protein and z-scores? As a binned 
-# image, scaled to protein length.
-# ====================================================== #
-
-
-# these will store all cell lines and genes seen across
-# the various data sets being integrated
+# these will store all cell lines and genes seen
+# across the various data sets being integrated
 my %master_cell_lines_seen;
 my %master_genes_seen;
-
 
 
 # ===================== #
 # Process the CCLE data #
 # ===================== #
 
-my %cell_lines_seen;	# store standard cell line names for all seen
-my %genes_seen;			# store standard gene names for all seen
 my %mutations_seen;		# store cell line * genome mutation to prevent counting repeats
-
-
-
-my %ccle_truncs;		# store truncating counts for cell*gene
-my %ccle_rec_mis;		# store recurrent missense counts for cell*gene
-my %ccle_other;			# store other counts for cell*gene
+my %ccle_truncs;		# store truncating counts for cell * gene
+my %ccle_rec_mis;		# store recurrent missense counts for cell * gene
+my %ccle_other;			# store other counts for cell * gene
 
 # Open and read mutations file
 open MUTS, "< $ccle_mut_data" or die "Can't read mutations file $ccle_mut_data: $!\n";
-
 my $header = <MUTS>;
-
 while(<MUTS>){
-
-  # get gene, cell line, prot. mut., consequence etc.
-  #	
-  # [0]		Hugo Symbol
-  # [1]		Entrez_Gene_Id
-  # [8]		Variant_Classification	// Missense_Mutation, Intron, Frame_Shift_Del
-  # [9]		Variant_Type			// DEL, SNP
-  # [15]	Tumor_Sample_Barcode	// JHUEM2_ENDOMETRIUM
-  # [32]	Genome_Change
-  # [37]	Protein_Change
-
   my @fields = split(/\t/);
-  my $entrez_gene = $fields[1];
-  my $var_class = $fields[8];
-  my $sample = $fields[15];
-  my $genome_change = $fields[32];
-  my $prot_change = $fields[37];
+  my $entrez_gene = $fields[1];			# [1]		Entrez_Gene_Id
+  my $var_class = $fields[8];			# [8]		Variant_Classification	// Missense_Mutation, Intron, Frame_Shift_Del
+  my $sample = $fields[15];				# [15]	Tumor_Sample_Barcode	// JHUEM2_ENDOMETRIUM
+  my $genome_change = $fields[32];		# [32]	Genome_Change
+  my $prot_change = $fields[37];		# [37]	Protein_Change
 
   # skip processing this variant if the gene is not in the set of output genes
   next unless exists $entrez_to_output_genes{$entrez_gene};
   
   # lookup gene and cell line name in dictionaries
   my $standard_gene = $entrez_to_output_genes{$entrez_gene};
-#  my $standard_gene = $entrez_gene;
-#  if(exists($genes{$entrez_gene})){
-#    $standard_gene = $genes{$entrez_gene};
-#  }
   my $standard_cell_line = $sample;
   if(exists($cell_lines{$sample})){
     $standard_cell_line = $cell_lines{$sample};
@@ -345,15 +295,10 @@ while(<MUTS>){
     warn "Cell line $sample not found in the cell line dictionary. You may need to add it.\n";
   }
 
-
-# DEBUG
-#print "CELL LINE: $standard_cell_line\nSTND GENE: $standard_gene\n";
-
   # store a hash key for every cell line * genome_change * consequence seen
   # skip if already counted...
   my $sample_genome_change_key = $standard_cell_line . "_" . $genome_change . "_" . $var_class;
   if(exists($mutations_seen{$sample_genome_change_key})){
-#    print "already seen $sample_genome_change_key - skipping.\n";
     next;
   }
   else{
@@ -362,9 +307,6 @@ while(<MUTS>){
   
   my $ccle_key = "$standard_cell_line\t$standard_gene";
   
-  $cell_lines_seen{$standard_cell_line} = 1;
-  $genes_seen{$standard_gene} = 1;
-
   # update the master record of all cell lines and genes seen
   # Note that for the %master_cell_lines_seen hash, we need to
   # know if the cell line was seen with mutation data or copy
@@ -377,7 +319,6 @@ while(<MUTS>){
   }
   $master_genes_seen{$standard_gene} = 1;
   
-  
   if($mutation_consequences{$var_class} eq "trunc"){	# if mutation is truncating
     $ccle_truncs{$ccle_key} ++;							# increment cellline+gene truncating count
   }
@@ -387,8 +328,6 @@ while(<MUTS>){
     my $prot_position = $prot_change;
     $prot_position =~ s/^p\.[A-Z]+//;
     $prot_position =~ s/[^\d].*//;
-    
-    
     my $davoli_key = "$identifiers[0]\t$prot_position";
     if(exists($mut_freqs{$davoli_key})){
       $ccle_rec_mis{$ccle_key} ++;
@@ -405,56 +344,32 @@ close MUTS;
 # Process the COSMIC data #
 # ======================= #
 
-# reset these so we can reuse for COSMIC
-%cell_lines_seen = ();
-%genes_seen = ();
-%mutations_seen = ();
-
-my %cos_truncs;		# store truncating counts for cell*gene
-my %cos_rec_mis;	# store recurrent missense counts for cell*gene
-my %cos_other;		# store other counts for cell*gene
+%mutations_seen = ();	# reset these so we can reuse for COSMIC
+my %cos_truncs;			# store truncating counts for cell*gene
+my %cos_rec_mis;		# store recurrent missense counts for cell*gene
+my %cos_other;			# store other counts for cell*gene
 
 # Open and read mutations file
 open COS, "< $cosmic_mut_data" or die "Can't read mutations file $cosmic_mut_data: $!\n";
-
 $header = <COS>;
-
 while(<COS>){
-
-  # get gene, cell line, prot. mut., consequence etc.
-  # [1]		Entrez_Gene_Id
-  # [8]		Variant_Classification	// Missense_Mutation, Intron, Frame_Shift_Del
-  # [9]		Variant_Type			// DEL, SNP
-  # [15]	Tumor_Sample_Barcode	// JHUEM2_ENDOMETRIUM
-  # [32]	Genome_Change
-  # [37]	Protein_Change
-	
-  # column indexes for COSMIC
-  # [0]   Gene name
-  # [3]   Sample name
-  # [13]  Mutation AA
-  # [14]  Mutation Description
-  # [15]  Mutation zygosity
-  # [18]  Mutation GRCh37 genome position
   my @fields = split(/\t/);
-  my $entrez_gene = $fields[0];  # this is actually a gene symbol
-  my $var_class = $fields[14];
-  my $sample = $fields[3];
-  my $genome_change = $fields[18];
-  my $prot_change = $fields[13];
-  my $mutation_zygosity = $fields[15];
+  my $entrez_gene = $fields[0];  		# this is actually a gene symbol
+  my $var_class = $fields[14];			# [14]  Mutation Description
+  my $sample = $fields[3];				# [3]   Sample name
+  my $genome_change = $fields[18];		# [18]  Mutation GRCh37 genome position
+  my $prot_change = $fields[13];		# [13]  Mutation AA
+  my $mutation_zygosity = $fields[15];	# [15]  Mutation zygosity
   
   # sometimes var_class is blank and we can do nothing with it... skip
   next if $var_class eq '';
   
   # lookup gene and cell line name in dictionaries
-
   $entrez_gene =~ s/_.+//;	# The COSMIC data often has the gene ID concatenated to the 
 							# transcript ID. e.g. CEACAM18_ENST00000451626
 							# strip out anything after '_' from entrez_gene
 
   my $standard_gene = $entrez_gene;
-  
   if(exists($genes{$entrez_gene})){
     $standard_gene = $genes{$entrez_gene};
   }
@@ -487,9 +402,6 @@ while(<COS>){
   }
   
   my $cos_key = "$standard_cell_line\t$standard_gene";
-  
-  $cell_lines_seen{$standard_cell_line} = 1;
-  $genes_seen{$standard_gene} = 1;
   
   # update the master record of all cell lines and genes seen
   if(exists($master_cell_lines_seen{$standard_cell_line})){
@@ -552,11 +464,7 @@ close COS;
 # Process the ICR VCF+VEP data #
 # ============================ #
 
-# reset these so we can reuse for VCF+VEP data
-%cell_lines_seen = ();
-%genes_seen = ();
-%mutations_seen = ();
-
+%mutations_seen = ();	# reset these so we can reuse for VCF+VEP data
 my %icr_truncs;		# store truncating counts for cell*gene
 my %icr_rec_mis;	# store recurrent missense counts for cell*gene
 my %icr_other;		# store other counts for cell*gene
@@ -624,9 +532,7 @@ while(<ICR>){
   
   my $icr_key = "$standard_cell_line\t$standard_gene";
   
-  $cell_lines_seen{$standard_cell_line} = 1;
-  $genes_seen{$standard_gene} = 1;
-  
+ 
   # update the master record of all cell lines and genes seen
   if(exists($master_cell_lines_seen{$standard_cell_line})){
   	$master_cell_lines_seen{$standard_cell_line} .= "\tmut";
@@ -688,11 +594,7 @@ close ICR;
 # Process the Biankin VEP data #
 # ============================ #
 
-# reset these so we can reuse for Biankin VEP data
-%cell_lines_seen = ();
-%genes_seen = ();
-%mutations_seen = ();
-
+%mutations_seen = ();	# reset these so we can reuse for Biankin VEP data
 my %biankin_truncs;		# store truncating counts for cell*gene
 my %biankin_rec_mis;	# store recurrent missense counts for cell*gene
 my %biankin_other;		# store other counts for cell*gene
@@ -713,7 +615,8 @@ while(<BIANKIN>){
   # [10]	protein change
 
   my @fields = split(/\t/);
-  my $entrez_gene = $fields[3];	# this is the ENSG ID
+#  my $entrez_gene = $fields[3];	# this is the ENSG ID - Note - changed on 141008 to use the symbol because these ENSGs are not in the cancer gene classification file
+  my $entrez_gene = $fields[23];	# this is the symbol
   my $var_class = $fields[6];
   my $sample = $fields[0];
   my $genome_change = $fields[1];
@@ -732,13 +635,14 @@ while(<BIANKIN>){
   # sometimes var_class is blank and we can do nothing with it... skip
   next if $var_class eq '';
   
-  
+
   # lookup gene and cell line name in dictionaries
-  my $standard_gene = $ensembl_to_output_genes{$entrez_gene};
-#  my $standard_gene = $entrez_gene;
-#  if(exists($genes{$entrez_gene})){
-#    $standard_gene = $genes{$entrez_gene};
-#  }
+  my $standard_gene = $entrez_gene;
+  if(exists($genes{$entrez_gene})){
+    $standard_gene = $genes{$entrez_gene};
+  }
+  next unless exists $symbol_to_output_genes{$standard_gene};
+
   my $standard_cell_line = $sample;
   if(exists($cell_lines{$sample})){
     $standard_cell_line = $cell_lines{$sample};
@@ -750,18 +654,19 @@ while(<BIANKIN>){
   # store a hash key for every cell line * genome_change * consequence seen
   # skip if already counted...
   my $sample_genome_change_key = $standard_cell_line . "_" . $genome_change . "_" . $var_class;
-  if(exists($mutations_seen{$sample_genome_change_key})){
+
+
+# This was dropped because if we are processing data with multiple transcripts for each mutation,
+# we want to test all the transcripts...
+#  if(exists($mutations_seen{$sample_genome_change_key})){
 #    print "already seen $sample_genome_change_key - skipping.\n";
-    next;
-  }
-  else{
+#    next;
+#  }
+#  else{
     $mutations_seen{$sample_genome_change_key} = 1;
-  }
+# }
   
   my $biankin_key = "$standard_cell_line\t$standard_gene";
-  
-  $cell_lines_seen{$standard_cell_line} = 1;
-  $genes_seen{$standard_gene} = 1;
   
   # update the master record of all cell lines and genes seen
   if(exists($master_cell_lines_seen{$standard_cell_line})){
@@ -772,11 +677,8 @@ while(<BIANKIN>){
   }
   $master_genes_seen{$standard_gene} = 1;
 
-  my $prot_position = $prot_change;
-  $prot_position =~ s/^p\.[A-Z]+//;
-  $prot_position =~ s/[^\d].*//;
   my @identifiers = split(/\t/, $standard_gene);
-  my $davoli_key = "$identifiers[0]\t$prot_position";
+  my $davoli_key = "$identifiers[0]\t$prot_pos";
 
   if($mutation_consequences{$var_class} eq "trunc"){	# if mutation is truncating
     $biankin_truncs{$biankin_key} ++;					# increment cellline+gene truncating count
@@ -822,11 +724,7 @@ close BIANKIN;
 # Process the WTSI mutation and CNA data #
 # ====================================== #
 
-# reset these so we can reuse for COSMIC
-%cell_lines_seen = ();
-%genes_seen = ();
-%mutations_seen = ();
-
+%mutations_seen = ();	# reset these so we can reuse for COSMIC
 my %wtsi_truncs;	# store truncating counts for cell*gene
 my %wtsi_rec_mis;	# store recurrent missense counts for cell*gene
 my %wtsi_other;		# store other counts for cell*gene
@@ -916,9 +814,6 @@ while(<WTSI>){
 
   my $wtsi_key = "$standard_cell_line\t$standard_gene";
   
-  $cell_lines_seen{$standard_cell_line} = 1;
-  $genes_seen{$standard_gene} = 1;
-  
   # update the master record of all cell lines and genes seen
   if(exists($master_cell_lines_seen{$standard_cell_line})){
   	$master_cell_lines_seen{$standard_cell_line} .= "\tmut\tCNA";
@@ -985,8 +880,6 @@ close WTSI;
 
 
 # reset these so we can reuse for VCF+VEP data
-%cell_lines_seen = ();
-%genes_seen = ();
 %mutations_seen = ();
 
 my %ccle_cnas;		# store: none/amp/del/gain/loss
@@ -1062,10 +955,6 @@ close CCLECNA;
 # Process the expression z-scores
 # =============================== #
 
-# reset these so we can reuse for expression
-%cell_lines_seen = ();
-%genes_seen = ();
-
 my %wtsi_exprn_z;		# store: -1/0/1 for under/normal/overexpression
 
 # Open and read the CCLE CNA file
@@ -1094,14 +983,11 @@ while(<EXPRNZ>){
 
   # skip processing this variant if the gene symbol is not in the set of output genes
   if(!exists $output_genes{$standard_gene}){
-    print "Skipping expression for gene: $standard_gene\n";
+#    print "Skipping expression for gene: $standard_gene\n";
     next;
   }
 
   my $wtsi_key = "$standard_cell_line\t$standard_gene";
-  
-  $cell_lines_seen{$standard_cell_line} = 1;
-  $genes_seen{$standard_gene} = 1;
   
   # update the master record of all cell lines and genes seen
   if(exists($master_cell_lines_seen{$standard_cell_line})){
