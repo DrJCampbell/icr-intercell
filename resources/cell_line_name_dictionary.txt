@@ -1,20 +1,23 @@
-# icr-intercell cell line name dictionary v0.1	
+# icr-intercell cell line name dictionary v0.2
 #	
-"# jamesc@icr.ac.uk, 13th May 2014"	
+# jamesc@icr.ac.uk, 13th May 2014
 #	
 # This file is used as a dictionary to standardise cell line names in different data sets	
 # Cell line names found in the first column (cell_line_name) should be converted to those	
 # given in the second column (intercell_name).	
 #	
 # cell line name sources used:	
-#	COSMIC CLP (http://cancer.sanger.ac.uk/cancergenome/projects/cosmic/download -> CosmicCLP_CompleteExport_v68.tsv.gz)
-#	CCLE (http://www.broadinstitute.org/ccle/data/browseData -> registration required -> CCLE_sample_info_file_2012-10-18.txt)
-#	Intercell (http://www.ncbi.nlm.nih.gov/pubmed/21984977)
+#		COSMIC CLP (http://cancer.sanger.ac.uk/cancergenome/projects/cosmic/download -> CosmicCLP_CompleteExport_v68.tsv.gz)
+#		CCLE (http://www.broadinstitute.org/ccle/data/browseData -> registration required -> CCLE_sample_info_file_2012-10-18.txt)
+#		Intercell (http://www.ncbi.nlm.nih.gov/pubmed/21984977)
+#
 # The cell line names used in the Intercell analysis attempt to follow the CCLE naming convention. The CCLE nameing convention comprises	
-"# the convention is the cell line name (containing only numbers and upper case letters) followed by an underscore, followed by the tissue in upper case."	
-"# Where a cell line was not present in the CCLE data, a best effort was made to use the tissue type as given by the CCLE."	
-# This version contains 1537 distinct cell lines names (intercell_name)	
-#		
+# the convention is the cell line name (containing only numbers and upper case letters) followed by an underscore, followed by the tissue in upper case.
+# Where a cell line was not present in the CCLE data, a best effort was made to use the tissue type as given by the CCLE.
+#
+# Changes:
+# v0.2 - changed 'PANCREAS' to 'PANCREAS' for the Biankin lines (TKCC*)
+#
 #cell_line_name	intercell_name	source
 5	5_UNKOWN	cosmic_clp
 29	29_UNKOWN	cosmic_clp
@@ -2784,22 +2787,22 @@ TIG3TD_LUNG	TIG3TD_LUNG	CCLE
 TK	TK_NS	cosmic_clp
 TK10	TK10_KIDNEY	cosmic_clp
 TK10	TK10_KIDNEY	gdsc_en_input
-TKCC-02	TKCC02_PANCREATIC	Biankin
-TKCC-03	TKCC03_PANCREATIC	Biankin
-TKCC-04	TKCC04_PANCREATIC	Biankin
-TKCC-05	TKCC05_PANCREATIC	Biankin
-TKCC-06	TKCC06_PANCREATIC	Biankin
-TKCC-07	TKCC07_PANCREATIC	Biankin
-TKCC-08	TKCC08_PANCREATIC	Biankin
-TKCC-09	TKCC09_PANCREATIC	Biankin
-TKCC-10	TKCC10_PANCREATIC	Biankin
-TKCC-12	TKCC12_PANCREATIC	Biankin
-TKCC-14	TKCC14_PANCREATIC	Biankin
-TKCC-15-LO	TKCC15_PANCREATIC	Biankin
-TKCC-16-LO	TKCC16_PANCREATIC	Biankin
-TKCC-17-LO	TKCC17_PANCREATIC	Biankin
-TKCC-18-LO	TKCC18_PANCREATIC	Biankin
-TKCC-22-LO	TKCC22_PANCREATIC	Biankin
+TKCC-02	TKCC02_PANCREAS	Biankin
+TKCC-03	TKCC03_PANCREAS	Biankin
+TKCC-04	TKCC04_PANCREAS	Biankin
+TKCC-05	TKCC05_PANCREAS	Biankin
+TKCC-06	TKCC06_PANCREAS	Biankin
+TKCC-07	TKCC07_PANCREAS	Biankin
+TKCC-08	TKCC08_PANCREAS	Biankin
+TKCC-09	TKCC09_PANCREAS	Biankin
+TKCC-10	TKCC10_PANCREAS	Biankin
+TKCC-12	TKCC12_PANCREAS	Biankin
+TKCC-14	TKCC14_PANCREAS	Biankin
+TKCC-15-LO	TKCC15_PANCREAS	Biankin
+TKCC-16-LO	TKCC16_PANCREAS	Biankin
+TKCC-17-LO	TKCC17_PANCREAS	Biankin
+TKCC-18-LO	TKCC18_PANCREAS	Biankin
+TKCC-22-LO	TKCC22_PANCREAS	Biankin
 TKCC02_PANCREAS	TKCC02_PANCREAS	intercell
 TKCC05_PANCREAS	TKCC05_PANCREAS	intercell
 TKCC06_PANCREAS	TKCC06_PANCREAS	intercell

@@ -631,6 +631,7 @@ while(<BIANKIN>){
     $prot_change = 'p.' . $prot_ref_alt_aa[0] . $prot_pos;
   }
   
+
   
   # sometimes var_class is blank and we can do nothing with it... skip
   next if $var_class eq '';
@@ -642,6 +643,7 @@ while(<BIANKIN>){
     $standard_gene = $genes{$entrez_gene};
   }
   next unless exists $symbol_to_output_genes{$standard_gene};
+  $standard_gene = $symbol_to_output_genes{$standard_gene};
 
   my $standard_cell_line = $sample;
   if(exists($cell_lines{$sample})){
@@ -651,6 +653,11 @@ while(<BIANKIN>){
     warn "Cell line $sample not found in the cell line dictionary. You may need to add it.\n";
   }
 
+
+#  print "Prot: $prot_change\t";
+#  print "Stdgn: $standard_gene\t";
+#  print "Entrz: $entrez_gene\t";
+#  print "Consq: $var_class\n";
   # store a hash key for every cell line * genome_change * consequence seen
   # skip if already counted...
   my $sample_genome_change_key = $standard_cell_line . "_" . $genome_change . "_" . $var_class;
@@ -688,6 +695,7 @@ while(<BIANKIN>){
    
     if(exists($mut_freqs{$davoli_key})){
       $biankin_rec_mis{$biankin_key} ++;
+      print "Found recurrent hit for $davoli_key\n";
     }
     else{
       $biankin_other{$biankin_key} ++;
@@ -1106,25 +1114,33 @@ while(my ($seen_cell_line, $cell_line_seen_in_dataset) = each  %master_cell_line
       $output_data .= "\t0";
     }
     
-    if(exists($ccle_cnas{$hash_key})){
-      $output_data .= "\t$ccle_cnas{$hash_key}";
-      if($ccle_cnas{$hash_key} == -2){
-        $hom_del = 1;
+    if(exists($ccle_cnas{$hash_key}) || exists($wtsi_cnas{$hash_key})){
+      if(exists($wtsi_cnas{$hash_key})){
+        $output_data .= "\t$wtsi_cnas{$hash_key}";
       }
-      elsif($ccle_cnas{$hash_key} == 2){
-        $amp = 1;
+      elsif(exists($ccle_cnas{$hash_key})){
+        $output_data .= "\t$ccle_cnas{$hash_key}";
       }
-      elsif($ccle_cnas{$hash_key} == -1){
-        $loss = 1;
+      
+      
+      if(exists($wtsi_cnas{$hash_key})){
+        if($wtsi_cnas{$hash_key} == -2){
+          $hom_del = 1;
+        }
+        elsif($wtsi_cnas{$hash_key} == 2){
+          $amp = 1;
+        }
       }
-    }
-    elsif(exists($wtsi_cnas{$hash_key})){
-      $output_data .= "\t$wtsi_cnas{$hash_key}";
-      if($wtsi_cnas{$hash_key} == -2){
-        $hom_del = 1;
-      }
-      elsif($wtsi_cnas{$hash_key} == 2){
-        $amp = 1;
+      if(exists($ccle_cnas{$hash_key})){
+        if($ccle_cnas{$hash_key} == -2){
+          $hom_del = 1;
+        }
+        elsif($ccle_cnas{$hash_key} == 2){
+          $amp = 1;
+        }
+        elsif($ccle_cnas{$hash_key} == -1){
+          $loss = 1;
+        }
       }
     }
     else{
