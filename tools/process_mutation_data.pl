@@ -300,7 +300,7 @@ if(defined $ccle_mut_data){
 	  # skip if already counted...
 	  my $sample_genome_change_key = $standard_cell_line . "_" . $genome_change . "_" . $var_class;
 	  if(exists($mutations_seen{$sample_genome_change_key})){
-		next;
+		#next;
 	  }
 	  else{
 		$mutations_seen{$sample_genome_change_key} = 1;
@@ -397,7 +397,7 @@ if(defined $cosmic_mut_data){
 	  my $sample_genome_change_key = $standard_cell_line . "_" . $genome_change . "_" . $var_class;
 	  if(exists($mutations_seen{$sample_genome_change_key})){
 	#    print "already seen $sample_genome_change_key - skipping.\n";
-		next;
+		#next;
 	  }
 	  else{
 		$mutations_seen{$sample_genome_change_key} = 1;
@@ -527,7 +527,7 @@ if(defined $vcf_mut_data){
 	  my $sample_genome_change_key = $standard_cell_line . "_" . $genome_change . "_" . $var_class;
 	  if(exists($mutations_seen{$sample_genome_change_key})){
 	#    print "already seen $sample_genome_change_key - skipping.\n";
-		next;
+		#next;
 	  }
 	  else{
 		$mutations_seen{$sample_genome_change_key} = 1;
@@ -815,11 +815,12 @@ if(defined $wtsi_mut_data){
 	  $standard_gene = $symbol_to_output_genes{$standard_gene};
 	
 	  # store a hash key for every cell line * genome_change * consequence seen
-	  # skip if already counted...
+	  # skip if already counted... beware that some variant types (CNVs) do not have unique
+	  # info in the CDS Syntax field.
 	  my $sample_genome_change_key = $standard_cell_line . "_" . $genome_change . "_" . $var_class;
 	  if(exists($mutations_seen{$sample_genome_change_key})){
 	#    print "already seen $sample_genome_change_key - skipping.\n";
-		next;
+	#	next;
 	  }
 	  else{
 		$mutations_seen{$sample_genome_change_key} = 1;
