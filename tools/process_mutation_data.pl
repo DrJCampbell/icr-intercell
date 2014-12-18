@@ -271,74 +271,75 @@ my %ccle_truncs;		# store truncating counts for cell * gene
 my %ccle_rec_mis;		# store recurrent missense counts for cell * gene
 my %ccle_other;			# store other counts for cell * gene
 
-# Open and read mutations file
-open MUTS, "< $ccle_mut_data" or die "Can't read mutations file $ccle_mut_data: $!\n";
-my $header = <MUTS>;
-while(<MUTS>){
-  my @fields = split(/\t/);
-  my $entrez_gene = $fields[1];			# [1]		Entrez_Gene_Id
-  my $var_class = $fields[8];			# [8]		Variant_Classification	// Missense_Mutation, Intron, Frame_Shift_Del
-  my $sample = $fields[15];				# [15]	Tumor_Sample_Barcode	// JHUEM2_ENDOMETRIUM
-  my $genome_change = $fields[32];		# [32]	Genome_Change
-  my $prot_change = $fields[37];		# [37]	Protein_Change
-
-  # skip processing this variant if the gene is not in the set of output genes
-  next unless exists $entrez_to_output_genes{$entrez_gene};
-  
-  # lookup gene and cell line name in dictionaries
-  my $standard_gene = $entrez_to_output_genes{$entrez_gene};
-  my $standard_cell_line = $sample;
-  if(exists($cell_lines{$sample})){
-    $standard_cell_line = $cell_lines{$sample};
-  }
-  else{
-    warn "Cell line $sample not found in the cell line dictionary. You may need to add it.\n";
-  }
-
-  # store a hash key for every cell line * genome_change * consequence seen
-  # skip if already counted...
-  my $sample_genome_change_key = $standard_cell_line . "_" . $genome_change . "_" . $var_class;
-  if(exists($mutations_seen{$sample_genome_change_key})){
-    next;
-  }
-  else{
-    $mutations_seen{$sample_genome_change_key} = 1;
-  }
-  
-  my $ccle_key = "$standard_cell_line\t$standard_gene";
-  
-  # update the master record of all cell lines and genes seen
-  # Note that for the %master_cell_lines_seen hash, we need to
-  # know if the cell line was seen with mutation data or copy
-  # number data. 
-  if(exists($master_cell_lines_seen{$standard_cell_line})){
-  	$master_cell_lines_seen{$standard_cell_line} .= "\tmut";
-  }
-  else{
-  	$master_cell_lines_seen{$standard_cell_line} = "\tmut";
-  }
-  $master_genes_seen{$standard_gene} = 1;
-  
-  if($mutation_consequences{$var_class} eq "trunc"){	# if mutation is truncating
-    $ccle_truncs{$ccle_key} ++;							# increment cellline+gene truncating count
-  }
-  elsif($mutation_consequences{$var_class} eq "aa_sub"){
-    # check if the mutation is recurrent as per Davoli
-    my @identifiers = split(/\t/, $standard_gene);
-    my $prot_position = $prot_change;
-    $prot_position =~ s/^p\.[A-Z]+//;
-    $prot_position =~ s/[^\d].*//;
-    my $davoli_key = "$identifiers[0]\t$prot_position";
-    if(exists($mut_freqs{$davoli_key})){
-      $ccle_rec_mis{$ccle_key} ++;
-    }
-    else{
-      $ccle_other{$ccle_key} ++;
-    }
-  }
-} # finished reading file, close
-close MUTS;
-
+if(defined $ccle_mut_data){
+	# Open and read mutations file
+	open MUTS, "< $ccle_mut_data" or die "Can't read mutations file $ccle_mut_data: $!\n";
+	my $header = <MUTS>;
+	while(<MUTS>){
+	  my @fields = split(/\t/);
+	  my $entrez_gene = $fields[1];			# [1]		Entrez_Gene_Id
+	  my $var_class = $fields[8];			# [8]		Variant_Classification	// Missense_Mutation, Intron, Frame_Shift_Del
+	  my $sample = $fields[15];				# [15]	Tumor_Sample_Barcode	// JHUEM2_ENDOMETRIUM
+	  my $genome_change = $fields[32];		# [32]	Genome_Change
+	  my $prot_change = $fields[37];		# [37]	Protein_Change
+	
+	  # skip processing this variant if the gene is not in the set of output genes
+	  next unless exists $entrez_to_output_genes{$entrez_gene};
+	  
+	  # lookup gene and cell line name in dictionaries
+	  my $standard_gene = $entrez_to_output_genes{$entrez_gene};
+	  my $standard_cell_line = $sample;
+	  if(exists($cell_lines{$sample})){
+		$standard_cell_line = $cell_lines{$sample};
+	  }
+	  else{
+		warn "Cell line $sample not found in the cell line dictionary. You may need to add it.\n";
+	  }
+	
+	  # store a hash key for every cell line * genome_change * consequence seen
+	  # skip if already counted...
+	  my $sample_genome_change_key = $standard_cell_line . "_" . $genome_change . "_" . $var_class;
+	  if(exists($mutations_seen{$sample_genome_change_key})){
+		next;
+	  }
+	  else{
+		$mutations_seen{$sample_genome_change_key} = 1;
+	  }
+	  
+	  my $ccle_key = "$standard_cell_line\t$standard_gene";
+	  
+	  # update the master record of all cell lines and genes seen
+	  # Note that for the %master_cell_lines_seen hash, we need to
+	  # know if the cell line was seen with mutation data or copy
+	  # number data. 
+	  if(exists($master_cell_lines_seen{$standard_cell_line})){
+		$master_cell_lines_seen{$standard_cell_line} .= "\tmut";
+	  }
+	  else{
+		$master_cell_lines_seen{$standard_cell_line} = "\tmut";
+	  }
+	  $master_genes_seen{$standard_gene} = 1;
+	  
+	  if($mutation_consequences{$var_class} eq "trunc"){	# if mutation is truncating
+		$ccle_truncs{$ccle_key} ++;							# increment cellline+gene truncating count
+	  }
+	  elsif($mutation_consequences{$var_class} eq "aa_sub"){
+		# check if the mutation is recurrent as per Davoli
+		my @identifiers = split(/\t/, $standard_gene);
+		my $prot_position = $prot_change;
+		$prot_position =~ s/^p\.[A-Z]+//;
+		$prot_position =~ s/[^\d].*//;
+		my $davoli_key = "$identifiers[0]\t$prot_position";
+		if(exists($mut_freqs{$davoli_key})){
+		  $ccle_rec_mis{$ccle_key} ++;
+		}
+		else{
+		  $ccle_other{$ccle_key} ++;
+		}
+	  }
+	} # finished reading file, close
+	close MUTS;
+}
 
 # ======================= #
 # Process the COSMIC data #
@@ -349,115 +350,116 @@ my %cos_truncs;			# store truncating counts for cell*gene
 my %cos_rec_mis;		# store recurrent missense counts for cell*gene
 my %cos_other;			# store other counts for cell*gene
 
-# Open and read mutations file
-open COS, "< $cosmic_mut_data" or die "Can't read mutations file $cosmic_mut_data: $!\n";
-$header = <COS>;
-while(<COS>){
-  my @fields = split(/\t/);
-  my $entrez_gene = $fields[0];  		# this is actually a gene symbol
-  my $var_class = $fields[14];			# [14]  Mutation Description
-  my $sample = $fields[3];				# [3]   Sample name
-  my $genome_change = $fields[18];		# [18]  Mutation GRCh37 genome position
-  my $prot_change = $fields[13];		# [13]  Mutation AA
-  my $mutation_zygosity = $fields[15];	# [15]  Mutation zygosity
-  
-  # sometimes var_class is blank and we can do nothing with it... skip
-  next if $var_class eq '';
-  
-  # lookup gene and cell line name in dictionaries
-  $entrez_gene =~ s/_.+//;	# The COSMIC data often has the gene ID concatenated to the 
-							# transcript ID. e.g. CEACAM18_ENST00000451626
-							# strip out anything after '_' from entrez_gene
-
-  my $standard_gene = $entrez_gene;
-  if(exists($genes{$entrez_gene})){
-    $standard_gene = $genes{$entrez_gene};
-  }
-  $entrez_gene = $standard_gene ; # this may look nuts but we are going to munge standard_gene later and want to still keep the gene symbol handy...
-  
-  my $standard_cell_line = $sample;
-  if(exists($cell_lines{$sample})){
-    $standard_cell_line = $cell_lines{$sample};
-  }
-  else{
-    warn "Cell line $sample not found in the cell line dictionary. You may need to add it.\n";
-  }
-  
-  # skip processing this variant if the gene symbol is not in the set of output genes
-  next unless exists $symbol_to_output_genes{$standard_gene};
-
-  # change $standard_gene from the symbol to the full trio of IDs and keep a record of
-  # the standardised gene symbol for later use in $entrez_gene;
-  $standard_gene = $symbol_to_output_genes{$standard_gene};
-
-  # store a hash key for every cell line * genome_change * consequence seen
-  # skip if already counted...
-  my $sample_genome_change_key = $standard_cell_line . "_" . $genome_change . "_" . $var_class;
-  if(exists($mutations_seen{$sample_genome_change_key})){
-#    print "already seen $sample_genome_change_key - skipping.\n";
-    next;
-  }
-  else{
-    $mutations_seen{$sample_genome_change_key} = 1;
-  }
-  
-  my $cos_key = "$standard_cell_line\t$standard_gene";
-  
-  # update the master record of all cell lines and genes seen
-  if(exists($master_cell_lines_seen{$standard_cell_line})){
-  	$master_cell_lines_seen{$standard_cell_line} .= "\tmut";
-  }
-  else{
-  	$master_cell_lines_seen{$standard_cell_line} = "\tmut";
-  }
-  $master_genes_seen{$standard_gene} = 1;
-
-  my $prot_position = $prot_change;
-  $prot_position =~ s/^p\.[A-Z]+//;
-  $prot_position =~ s/[^\d].*//;  
-  my $davoli_key = "$entrez_gene\t$prot_position";
-  
-  if($mutation_consequences{$var_class} eq "trunc"){	# if mutation is truncating
-    $cos_truncs{$cos_key} ++;							# increment cellline+gene truncating count
-  }
-  elsif($mutation_consequences{$var_class} eq "aa_sub"){
-    # check if the mutation is recurrent as per Davoli
-    if(exists($mut_freqs{$davoli_key})){
-      $cos_rec_mis{$cos_key} ++;
-    }
-    else{
-      $cos_other{$cos_key} ++;
-    }
-  }
-
-
-  # collect the details for later output:
-  if(exists $details_table{$cos_key}{"cos_mut"}){
-    $details_table{$cos_key}{"cos_mut"} .=  "; $prot_change";
-    $details_table{$cos_key}{"cos_type"} .=  "; $mutation_consequences{$var_class}";
-    if(exists($mut_freqs{$davoli_key})){
-      $details_table{$cos_key}{"cos_davoli_freq"} .= "; $mut_freqs{$davoli_key}";
-    }
-    else{
-      $details_table{$cos_key}{"cos_davoli_freq"} .= "; NA";
-    }
-  }
-  else{
-    $details_table{$cos_key}{"cos_mut"} =  $prot_change;
-    $details_table{$cos_key}{"cos_type"} .=  $mutation_consequences{$var_class};
-    if(exists($mut_freqs{$davoli_key})){
-      $details_table{$cos_key}{"cos_davoli_freq"} = "$mut_freqs{$davoli_key}";
-    }
-    else{
-      $details_table{$cos_key}{"cos_davoli_freq"} = "NA";
-    }
-  }
-  
-  
-  
-} # finished reading file, close
-close COS;
-
+if(defined $cosmic_mut_data){
+	# Open and read mutations file
+	open COS, "< $cosmic_mut_data" or die "Can't read mutations file $cosmic_mut_data: $!\n";
+	my $header = <COS>;
+	while(<COS>){
+	  my @fields = split(/\t/);
+	  my $entrez_gene = $fields[0];  		# this is actually a gene symbol
+	  my $var_class = $fields[14];			# [14]  Mutation Description
+	  my $sample = $fields[3];				# [3]   Sample name
+	  my $genome_change = $fields[18];		# [18]  Mutation GRCh37 genome position
+	  my $prot_change = $fields[13];		# [13]  Mutation AA
+	  my $mutation_zygosity = $fields[15];	# [15]  Mutation zygosity
+	  
+	  # sometimes var_class is blank and we can do nothing with it... skip
+	  next if $var_class eq '';
+	  
+	  # lookup gene and cell line name in dictionaries
+	  $entrez_gene =~ s/_.+//;	# The COSMIC data often has the gene ID concatenated to the 
+								# transcript ID. e.g. CEACAM18_ENST00000451626
+								# strip out anything after '_' from entrez_gene
+	
+	  my $standard_gene = $entrez_gene;
+	  if(exists($genes{$entrez_gene})){
+		$standard_gene = $genes{$entrez_gene};
+	  }
+	  $entrez_gene = $standard_gene ; # this may look nuts but we are going to munge standard_gene later and want to still keep the gene symbol handy...
+	  
+	  my $standard_cell_line = $sample;
+	  if(exists($cell_lines{$sample})){
+		$standard_cell_line = $cell_lines{$sample};
+	  }
+	  else{
+		warn "Cell line $sample not found in the cell line dictionary. You may need to add it.\n";
+	  }
+	  
+	  # skip processing this variant if the gene symbol is not in the set of output genes
+	  next unless exists $symbol_to_output_genes{$standard_gene};
+	
+	  # change $standard_gene from the symbol to the full trio of IDs and keep a record of
+	  # the standardised gene symbol for later use in $entrez_gene;
+	  $standard_gene = $symbol_to_output_genes{$standard_gene};
+	
+	  # store a hash key for every cell line * genome_change * consequence seen
+	  # skip if already counted...
+	  my $sample_genome_change_key = $standard_cell_line . "_" . $genome_change . "_" . $var_class;
+	  if(exists($mutations_seen{$sample_genome_change_key})){
+	#    print "already seen $sample_genome_change_key - skipping.\n";
+		next;
+	  }
+	  else{
+		$mutations_seen{$sample_genome_change_key} = 1;
+	  }
+	  
+	  my $cos_key = "$standard_cell_line\t$standard_gene";
+	  
+	  # update the master record of all cell lines and genes seen
+	  if(exists($master_cell_lines_seen{$standard_cell_line})){
+		$master_cell_lines_seen{$standard_cell_line} .= "\tmut";
+	  }
+	  else{
+		$master_cell_lines_seen{$standard_cell_line} = "\tmut";
+	  }
+	  $master_genes_seen{$standard_gene} = 1;
+	
+	  my $prot_position = $prot_change;
+	  $prot_position =~ s/^p\.[A-Z]+//;
+	  $prot_position =~ s/[^\d].*//;  
+	  my $davoli_key = "$entrez_gene\t$prot_position";
+	  
+	  if($mutation_consequences{$var_class} eq "trunc"){	# if mutation is truncating
+		$cos_truncs{$cos_key} ++;							# increment cellline+gene truncating count
+	  }
+	  elsif($mutation_consequences{$var_class} eq "aa_sub"){
+		# check if the mutation is recurrent as per Davoli
+		if(exists($mut_freqs{$davoli_key})){
+		  $cos_rec_mis{$cos_key} ++;
+		}
+		else{
+		  $cos_other{$cos_key} ++;
+		}
+	  }
+	
+	
+	  # collect the details for later output:
+	  if(exists $details_table{$cos_key}{"cos_mut"}){
+		$details_table{$cos_key}{"cos_mut"} .=  "; $prot_change";
+		$details_table{$cos_key}{"cos_type"} .=  "; $mutation_consequences{$var_class}";
+		if(exists($mut_freqs{$davoli_key})){
+		  $details_table{$cos_key}{"cos_davoli_freq"} .= "; $mut_freqs{$davoli_key}";
+		}
+		else{
+		  $details_table{$cos_key}{"cos_davoli_freq"} .= "; NA";
+		}
+	  }
+	  else{
+		$details_table{$cos_key}{"cos_mut"} =  $prot_change;
+		$details_table{$cos_key}{"cos_type"} .=  $mutation_consequences{$var_class};
+		if(exists($mut_freqs{$davoli_key})){
+		  $details_table{$cos_key}{"cos_davoli_freq"} = "$mut_freqs{$davoli_key}";
+		}
+		else{
+		  $details_table{$cos_key}{"cos_davoli_freq"} = "NA";
+		}
+	  }
+	  
+	  
+	  
+	} # finished reading file, close
+	close COS;
+}
 
 
 # ============================ #
@@ -469,126 +471,127 @@ my %icr_truncs;		# store truncating counts for cell*gene
 my %icr_rec_mis;	# store recurrent missense counts for cell*gene
 my %icr_other;		# store other counts for cell*gene
 
-# Open and read mutations file
-open ICR, "< $vcf_mut_data" or die "Can't read mutations file $vcf_mut_data: $!\n";
-
-$header = <ICR>;
-
-while(<ICR>){
-
-  # get gene, cell line, prot. mut., consequence etc.
-  # [1]		Entrez_Gene_Id
-  # [8]		Variant_Classification	// Missense_Mutation, Intron, Frame_Shift_Del
-  # [9]		Variant_Type			// DEL, SNP
-  # [15]	Tumor_Sample_Barcode	// JHUEM2_ENDOMETRIUM
-  # [32]	Genome_Change
-  # [37]	Protein_Change
-
-  # column indexes for ICR VCF+VEP data
-  # [24] Extra
-  # [25] most_severe_consequence
-  # [1] cell_line
-  # [12] Uploaded_variation
-  # [26] protein_mutation
-
-
-  my @fields = split(/\t/);
-  my $entrez_gene = $fields[26]; # this is the Gene symbol... data are old and many ENSG IDs are not in the current dictionary
-  my $var_class = $fields[27];
-  my $sample = $fields[1];
-  my $genome_change = $fields[13];
-  my $prot_change = $fields[28];
-  
-  # sometimes var_class is blank and we can do nothing with it... skip
-  next if $var_class eq '';
-  
-  # lookup gene and cell line name in dictionaries
-  my $standard_gene = $entrez_gene;
-  if(exists($genes{$entrez_gene})){
-    $standard_gene = $genes{$entrez_gene};
-  }
-  
-  next unless exists $symbol_to_output_genes{$standard_gene};
-  $standard_gene = $symbol_to_output_genes{$standard_gene};
-
-  my $standard_cell_line = $sample;
-  if(exists($cell_lines{$sample})){
-    $standard_cell_line = $cell_lines{$sample};
-  }
-  else{
-    warn "Cell line $sample not found in the cell line dictionary. You may need to add it.\n";
-  }
-
-  # store a hash key for every cell line * genome_change * consequence seen
-  # skip if already counted...
-  my $sample_genome_change_key = $standard_cell_line . "_" . $genome_change . "_" . $var_class;
-  if(exists($mutations_seen{$sample_genome_change_key})){
-#    print "already seen $sample_genome_change_key - skipping.\n";
-    next;
-  }
-  else{
-    $mutations_seen{$sample_genome_change_key} = 1;
-  }
-  
-  my $icr_key = "$standard_cell_line\t$standard_gene";
-  
- 
-  # update the master record of all cell lines and genes seen
-  if(exists($master_cell_lines_seen{$standard_cell_line})){
-  	$master_cell_lines_seen{$standard_cell_line} .= "\tmut";
-  }
-  else{
-  	$master_cell_lines_seen{$standard_cell_line} = "\tmut";
-  }
-  $master_genes_seen{$standard_gene} = 1;
-
-
-  my $prot_position = $prot_change;
-  $prot_position =~ s/^p\.[A-Z]+//;
-  $prot_position =~ s/[^\d].*//;
-  my @identifiers = split(/\t/, $standard_gene);
-  my $davoli_key = "$identifiers[0]\t$prot_position";
-
-
-  if($mutation_consequences{$var_class} eq "trunc"){	# if mutation is truncating
-    $icr_truncs{$icr_key} ++;							# increment cellline+gene truncating count
-  }
-  elsif($mutation_consequences{$var_class} eq "aa_sub"){
-    # check if the mutation is recurrent as per Davoli
-    
-    if(exists($mut_freqs{$davoli_key})){
-      $icr_rec_mis{$icr_key} ++;
-    }
-    else{
-      $icr_other{$icr_key} ++;
-    }
-  }
-  
-  # collect the details for later output:
-  if(exists $details_table{$icr_key}{"icr_mut"}){
-    $details_table{$icr_key}{"icr_mut"} .=  "; $prot_change";
-    $details_table{$icr_key}{"icr_type"} .=  "; $mutation_consequences{$var_class}";
-    if(exists($mut_freqs{$davoli_key})){
-      $details_table{$icr_key}{"icr_davoli_freq"} .= "; $mut_freqs{$davoli_key}";
-    }
-    else{
-      $details_table{$icr_key}{"icr_davoli_freq"} .= "; NA";
-    }
-  }
-  else{
-    $details_table{$icr_key}{"icr_mut"} =  $prot_change;
-    $details_table{$icr_key}{"icr_type"} .=  $mutation_consequences{$var_class};
-    if(exists($mut_freqs{$davoli_key})){
-      $details_table{$icr_key}{"icr_davoli_freq"} = "$mut_freqs{$davoli_key}";
-    }
-    else{
-      $details_table{$icr_key}{"icr_davoli_freq"} = "NA";
-    }
-  }
-  
-} # finished reading file, close
-close ICR;
-
+if(defined $vcf_mut_data){
+	# Open and read mutations file
+	open ICR, "< $vcf_mut_data" or die "Can't read mutations file $vcf_mut_data: $!\n";
+	
+	my $header = <ICR>;
+	
+	while(<ICR>){
+	
+	  # get gene, cell line, prot. mut., consequence etc.
+	  # [1]		Entrez_Gene_Id
+	  # [8]		Variant_Classification	// Missense_Mutation, Intron, Frame_Shift_Del
+	  # [9]		Variant_Type			// DEL, SNP
+	  # [15]	Tumor_Sample_Barcode	// JHUEM2_ENDOMETRIUM
+	  # [32]	Genome_Change
+	  # [37]	Protein_Change
+	
+	  # column indexes for ICR VCF+VEP data
+	  # [24] Extra
+	  # [25] most_severe_consequence
+	  # [1] cell_line
+	  # [12] Uploaded_variation
+	  # [26] protein_mutation
+	
+	
+	  my @fields = split(/\t/);
+	  my $entrez_gene = $fields[26]; # this is the Gene symbol... data are old and many ENSG IDs are not in the current dictionary
+	  my $var_class = $fields[27];
+	  my $sample = $fields[1];
+	  my $genome_change = $fields[13];
+	  my $prot_change = $fields[28];
+	  
+	  # sometimes var_class is blank and we can do nothing with it... skip
+	  next if $var_class eq '';
+	  
+	  # lookup gene and cell line name in dictionaries
+	  my $standard_gene = $entrez_gene;
+	  if(exists($genes{$entrez_gene})){
+		$standard_gene = $genes{$entrez_gene};
+	  }
+	  
+	  next unless exists $symbol_to_output_genes{$standard_gene};
+	  $standard_gene = $symbol_to_output_genes{$standard_gene};
+	
+	  my $standard_cell_line = $sample;
+	  if(exists($cell_lines{$sample})){
+		$standard_cell_line = $cell_lines{$sample};
+	  }
+	  else{
+		warn "Cell line $sample not found in the cell line dictionary. You may need to add it.\n";
+	  }
+	
+	  # store a hash key for every cell line * genome_change * consequence seen
+	  # skip if already counted...
+	  my $sample_genome_change_key = $standard_cell_line . "_" . $genome_change . "_" . $var_class;
+	  if(exists($mutations_seen{$sample_genome_change_key})){
+	#    print "already seen $sample_genome_change_key - skipping.\n";
+		next;
+	  }
+	  else{
+		$mutations_seen{$sample_genome_change_key} = 1;
+	  }
+	  
+	  my $icr_key = "$standard_cell_line\t$standard_gene";
+	  
+	 
+	  # update the master record of all cell lines and genes seen
+	  if(exists($master_cell_lines_seen{$standard_cell_line})){
+		$master_cell_lines_seen{$standard_cell_line} .= "\tmut";
+	  }
+	  else{
+		$master_cell_lines_seen{$standard_cell_line} = "\tmut";
+	  }
+	  $master_genes_seen{$standard_gene} = 1;
+	
+	
+	  my $prot_position = $prot_change;
+	  $prot_position =~ s/^p\.[A-Z]+//;
+	  $prot_position =~ s/[^\d].*//;
+	  my @identifiers = split(/\t/, $standard_gene);
+	  my $davoli_key = "$identifiers[0]\t$prot_position";
+	
+	
+	  if($mutation_consequences{$var_class} eq "trunc"){	# if mutation is truncating
+		$icr_truncs{$icr_key} ++;							# increment cellline+gene truncating count
+	  }
+	  elsif($mutation_consequences{$var_class} eq "aa_sub"){
+		# check if the mutation is recurrent as per Davoli
+		
+		if(exists($mut_freqs{$davoli_key})){
+		  $icr_rec_mis{$icr_key} ++;
+		}
+		else{
+		  $icr_other{$icr_key} ++;
+		}
+	  }
+	  
+	  # collect the details for later output:
+	  if(exists $details_table{$icr_key}{"icr_mut"}){
+		$details_table{$icr_key}{"icr_mut"} .=  "; $prot_change";
+		$details_table{$icr_key}{"icr_type"} .=  "; $mutation_consequences{$var_class}";
+		if(exists($mut_freqs{$davoli_key})){
+		  $details_table{$icr_key}{"icr_davoli_freq"} .= "; $mut_freqs{$davoli_key}";
+		}
+		else{
+		  $details_table{$icr_key}{"icr_davoli_freq"} .= "; NA";
+		}
+	  }
+	  else{
+		$details_table{$icr_key}{"icr_mut"} =  $prot_change;
+		$details_table{$icr_key}{"icr_type"} .=  $mutation_consequences{$var_class};
+		if(exists($mut_freqs{$davoli_key})){
+		  $details_table{$icr_key}{"icr_davoli_freq"} = "$mut_freqs{$davoli_key}";
+		}
+		else{
+		  $details_table{$icr_key}{"icr_davoli_freq"} = "NA";
+		}
+	  }
+	  
+	} # finished reading file, close
+	close ICR;
+}
 
 # ============================ #
 # Process the Biankin VEP data #
@@ -599,134 +602,135 @@ my %biankin_truncs;		# store truncating counts for cell*gene
 my %biankin_rec_mis;	# store recurrent missense counts for cell*gene
 my %biankin_other;		# store other counts for cell*gene
 
-# Open and read mutations file
-open BIANKIN, "< $biankin_mut_data" or die "Can't read mutations file $biankin_mut_data: $!\n";
-
-$header = <BIANKIN>;
-
-while(<BIANKIN>){
-
-  # get gene, cell line, prot. mut., consequence etc.
-  # [0]		sample
-  # [1]		genome_chnage
-  # [3]		ENSG ID
-  # [6]		consequence/variant classification
-  # [9]		protein position
-  # [10]	protein change
-
-  my @fields = split(/\t/);
-#  my $entrez_gene = $fields[3];	# this is the ENSG ID - Note - changed on 141008 to use the symbol because these ENSGs are not in the cancer gene classification file
-  my $entrez_gene = $fields[23];	# this is the symbol
-  my $var_class = $fields[6];
-  my $sample = $fields[0];
-  my $genome_change = $fields[1];
-  
-  my $prot_pos = $fields[9];
-  my @prot_ref_alt_aa = split(/\//, $fields[10]);
-  my $prot_change = undef;
-  if(defined($prot_ref_alt_aa[1])){
-    $prot_change = 'p.' . $prot_ref_alt_aa[0] . $prot_pos . $prot_ref_alt_aa[1];
-  }
-  else{
-    $prot_change = 'p.' . $prot_ref_alt_aa[0] . $prot_pos;
-  }
-  
-
-  
-  # sometimes var_class is blank and we can do nothing with it... skip
-  next if $var_class eq '';
-  
-
-  # lookup gene and cell line name in dictionaries
-  my $standard_gene = $entrez_gene;
-  if(exists($genes{$entrez_gene})){
-    $standard_gene = $genes{$entrez_gene};
-  }
-  next unless exists $symbol_to_output_genes{$standard_gene};
-  $standard_gene = $symbol_to_output_genes{$standard_gene};
-
-  my $standard_cell_line = $sample;
-  if(exists($cell_lines{$sample})){
-    $standard_cell_line = $cell_lines{$sample};
-  }
-  else{
-    warn "Cell line $sample not found in the cell line dictionary. You may need to add it.\n";
-  }
-
-
-#  print "Prot: $prot_change\t";
-#  print "Stdgn: $standard_gene\t";
-#  print "Entrz: $entrez_gene\t";
-#  print "Consq: $var_class\n";
-  # store a hash key for every cell line * genome_change * consequence seen
-  # skip if already counted...
-  my $sample_genome_change_key = $standard_cell_line . "_" . $genome_change . "_" . $var_class;
-
-
-# This was dropped because if we are processing data with multiple transcripts for each mutation,
-# we want to test all the transcripts...
-#  if(exists($mutations_seen{$sample_genome_change_key})){
-#    print "already seen $sample_genome_change_key - skipping.\n";
-#    next;
-#  }
-#  else{
-    $mutations_seen{$sample_genome_change_key} = 1;
-# }
-  
-  my $biankin_key = "$standard_cell_line\t$standard_gene";
-  
-  # update the master record of all cell lines and genes seen
-  if(exists($master_cell_lines_seen{$standard_cell_line})){
-  	$master_cell_lines_seen{$standard_cell_line} .= "\tmut";
-  }
-  else{
-  	$master_cell_lines_seen{$standard_cell_line} = "\tmut";
-  }
-  $master_genes_seen{$standard_gene} = 1;
-
-  my @identifiers = split(/\t/, $standard_gene);
-  my $davoli_key = "$identifiers[0]\t$prot_pos";
-
-  if($mutation_consequences{$var_class} eq "trunc"){	# if mutation is truncating
-    $biankin_truncs{$biankin_key} ++;					# increment cellline+gene truncating count
-  }
-  elsif($mutation_consequences{$var_class} eq "aa_sub"){
-    # check if the mutation is recurrent as per Davoli
-   
-    if(exists($mut_freqs{$davoli_key})){
-      $biankin_rec_mis{$biankin_key} ++;
-      print "Found recurrent hit for $davoli_key\n";
-    }
-    else{
-      $biankin_other{$biankin_key} ++;
-    }
-  }
-  
-  # collect the details for later output:
-  if(exists $details_table{$biankin_key}{"biankin_mut"}){
-    $details_table{$biankin_key}{"biankin_mut"} .=  "; $prot_change";
-    $details_table{$biankin_key}{"biankin_type"} .=  "; $mutation_consequences{$var_class}";
-    if(exists($mut_freqs{$davoli_key})){
-      $details_table{$biankin_key}{"biankin_davoli_freq"} .= "; $mut_freqs{$davoli_key}";
-    }
-    else{
-      $details_table{$biankin_key}{"biankin_davoli_freq"} .= "; NA";
-    }
-  }
-  else{
-    $details_table{$biankin_key}{"biankin_mut"} =  $prot_change;
-    $details_table{$biankin_key}{"biankin_type"} .=  $mutation_consequences{$var_class};
-    if(exists($mut_freqs{$davoli_key})){
-      $details_table{$biankin_key}{"biankin_davoli_freq"} = "$mut_freqs{$davoli_key}";
-    }
-    else{
-      $details_table{$biankin_key}{"biankin_davoli_freq"} = "NA";
-    }
-  }
-  
-} # finished reading file, close
-close BIANKIN;
-
+if(defined $biankin_mut_data){
+	# Open and read mutations file
+	open BIANKIN, "< $biankin_mut_data" or die "Can't read mutations file $biankin_mut_data: $!\n";
+	
+	my $header = <BIANKIN>;
+	
+	while(<BIANKIN>){
+	
+	  # get gene, cell line, prot. mut., consequence etc.
+	  # [0]		sample
+	  # [1]		genome_chnage
+	  # [3]		ENSG ID
+	  # [6]		consequence/variant classification
+	  # [9]		protein position
+	  # [10]	protein change
+	
+	  my @fields = split(/\t/);
+	#  my $entrez_gene = $fields[3];	# this is the ENSG ID - Note - changed on 141008 to use the symbol because these ENSGs are not in the cancer gene classification file
+	  my $entrez_gene = $fields[23];	# this is the symbol
+	  my $var_class = $fields[6];
+	  my $sample = $fields[0];
+	  my $genome_change = $fields[1];
+	  
+	  my $prot_pos = $fields[9];
+	  my @prot_ref_alt_aa = split(/\//, $fields[10]);
+	  my $prot_change = undef;
+	  if(defined($prot_ref_alt_aa[1])){
+		$prot_change = 'p.' . $prot_ref_alt_aa[0] . $prot_pos . $prot_ref_alt_aa[1];
+	  }
+	  else{
+		$prot_change = 'p.' . $prot_ref_alt_aa[0] . $prot_pos;
+	  }
+	  
+	
+	  
+	  # sometimes var_class is blank and we can do nothing with it... skip
+	  next if $var_class eq '';
+	  
+	
+	  # lookup gene and cell line name in dictionaries
+	  my $standard_gene = $entrez_gene;
+	  if(exists($genes{$entrez_gene})){
+		$standard_gene = $genes{$entrez_gene};
+	  }
+	  next unless exists $symbol_to_output_genes{$standard_gene};
+	  $standard_gene = $symbol_to_output_genes{$standard_gene};
+	
+	  my $standard_cell_line = $sample;
+	  if(exists($cell_lines{$sample})){
+		$standard_cell_line = $cell_lines{$sample};
+	  }
+	  else{
+		warn "Cell line $sample not found in the cell line dictionary. You may need to add it.\n";
+	  }
+	
+	
+	#  print "Prot: $prot_change\t";
+	#  print "Stdgn: $standard_gene\t";
+	#  print "Entrz: $entrez_gene\t";
+	#  print "Consq: $var_class\n";
+	  # store a hash key for every cell line * genome_change * consequence seen
+	  # skip if already counted...
+	  my $sample_genome_change_key = $standard_cell_line . "_" . $genome_change . "_" . $var_class;
+	
+	
+	# This was dropped because if we are processing data with multiple transcripts for each mutation,
+	# we want to test all the transcripts...
+	#  if(exists($mutations_seen{$sample_genome_change_key})){
+	#    print "already seen $sample_genome_change_key - skipping.\n";
+	#    next;
+	#  }
+	#  else{
+		$mutations_seen{$sample_genome_change_key} = 1;
+	# }
+	  
+	  my $biankin_key = "$standard_cell_line\t$standard_gene";
+	  
+	  # update the master record of all cell lines and genes seen
+	  if(exists($master_cell_lines_seen{$standard_cell_line})){
+		$master_cell_lines_seen{$standard_cell_line} .= "\tmut";
+	  }
+	  else{
+		$master_cell_lines_seen{$standard_cell_line} = "\tmut";
+	  }
+	  $master_genes_seen{$standard_gene} = 1;
+	
+	  my @identifiers = split(/\t/, $standard_gene);
+	  my $davoli_key = "$identifiers[0]\t$prot_pos";
+	
+	  if($mutation_consequences{$var_class} eq "trunc"){	# if mutation is truncating
+		$biankin_truncs{$biankin_key} ++;					# increment cellline+gene truncating count
+	  }
+	  elsif($mutation_consequences{$var_class} eq "aa_sub"){
+		# check if the mutation is recurrent as per Davoli
+	   
+		if(exists($mut_freqs{$davoli_key})){
+		  $biankin_rec_mis{$biankin_key} ++;
+		  print "Found recurrent hit for $davoli_key\n";
+		}
+		else{
+		  $biankin_other{$biankin_key} ++;
+		}
+	  }
+	  
+	  # collect the details for later output:
+	  if(exists $details_table{$biankin_key}{"biankin_mut"}){
+		$details_table{$biankin_key}{"biankin_mut"} .=  "; $prot_change";
+		$details_table{$biankin_key}{"biankin_type"} .=  "; $mutation_consequences{$var_class}";
+		if(exists($mut_freqs{$davoli_key})){
+		  $details_table{$biankin_key}{"biankin_davoli_freq"} .= "; $mut_freqs{$davoli_key}";
+		}
+		else{
+		  $details_table{$biankin_key}{"biankin_davoli_freq"} .= "; NA";
+		}
+	  }
+	  else{
+		$details_table{$biankin_key}{"biankin_mut"} =  $prot_change;
+		$details_table{$biankin_key}{"biankin_type"} .=  $mutation_consequences{$var_class};
+		if(exists($mut_freqs{$davoli_key})){
+		  $details_table{$biankin_key}{"biankin_davoli_freq"} = "$mut_freqs{$davoli_key}";
+		}
+		else{
+		  $details_table{$biankin_key}{"biankin_davoli_freq"} = "NA";
+		}
+	  }
+	  
+	} # finished reading file, close
+	close BIANKIN;
+}
 
 # ====================================== #
 # Process the WTSI mutation and CNA data #
@@ -739,147 +743,152 @@ my %wtsi_other;		# store other counts for cell*gene
 
 my %wtsi_cnas;		# store: none/amp/del/gain/loss
 
-# Open and read mutations file
-open WTSI, "< $wtsi_mut_data" or die "Can't read mutations file $wtsi_mut_data: $!\n";
-
-$header = <WTSI>;
-
-while(<WTSI>){
-
-  # get gene, cell line, prot. mut., consequence etc.
-  # [0] ID_VARIANT
-  # [1] SAMPLE_NAME
-  # [2] CHR
-  # [3] GENOME_START
-  # [4] GENOME_STOP
-  # [5] STRAND
-  # [6] ALGORITHM
-  # [7] GENE_NAME
-  # [8] COSMIC_Name
-  # [9] TRANSCRIPT
-  # [10] WT
-  # [11] MT
-  # [12] CDS_SYNTAX
-  # [13] AA_MUT_SYNTAX
-  # [14] DESCRIPTION
-  # [15] QUALITY
-  # [16] ZYGOSITY
-  # [17] VERIF_STATUS_MINT
-  # [18] FATHMM Score
-  # [19] FATHMM Summary
-  # [20] Comment
-
-  my @fields = split(/\t/);
-  my $entrez_gene = $fields[7];  # this is actually a gene symbol
-  my $var_class = $fields[14];
-  my $sample = $fields[1];
-  my $genome_change = $fields[12];
-  my $prot_change = $fields[13];
-  my $mutation_zygosity = $fields[16];
-  
-  # sometimes var_class is blank and we can do nothing with it... skip
-  next if $var_class eq '' || $var_class eq 'Unknown';
-  
-  # lookup gene and cell line name in dictionaries
-
-  $entrez_gene =~ s/_.+//;	# The COSMIC data often has the gene ID concatenated to the 
-							# transcript ID. e.g. CEACAM18_ENST00000451626
-							# strip out anything after '_' from entrez_gene
-
-  my $standard_gene = $entrez_gene;
-  
-  if(exists($genes{$entrez_gene})){
-    $standard_gene = $genes{$entrez_gene};
-  }
-  $entrez_gene = $standard_gene ; # this may look nuts but we are going to munge standard_gene later and want to still keep the gene symbol handy...
-  
-  my $standard_cell_line = $sample;
-  if(exists($cell_lines{$sample})){
-    $standard_cell_line = $cell_lines{$sample};
-  }
-  else{
-    warn "Cell line $sample not found in the cell line dictionary. You may need to add it.\n";
-  }
-
-  
-  # skip processing this variant if the gene symbol is not in the set of output genes
-  next unless exists $symbol_to_output_genes{$standard_gene};
-
-  # change $standard_gene from the symbol to the full trio of IDs and keep a record of
-  # the standardised gene symbol for later use in $entrez_gene;
-  $standard_gene = $symbol_to_output_genes{$standard_gene};
-
-  # store a hash key for every cell line * genome_change * consequence seen
-  # skip if already counted...
-  my $sample_genome_change_key = $standard_cell_line . "_" . $genome_change . "_" . $var_class;
-  if(exists($mutations_seen{$sample_genome_change_key})){
-#    print "already seen $sample_genome_change_key - skipping.\n";
-    next;
-  }
-  else{
-    $mutations_seen{$sample_genome_change_key} = 1;
-  }
-
-  my $wtsi_key = "$standard_cell_line\t$standard_gene";
-  
-  # update the master record of all cell lines and genes seen
-  if(exists($master_cell_lines_seen{$standard_cell_line})){
-  	$master_cell_lines_seen{$standard_cell_line} .= "\tmut\tCNA";
-  }
-  else{
-  	$master_cell_lines_seen{$standard_cell_line} = "\tmut\tCNA";
-  }
-  $master_genes_seen{$standard_gene} = 1;
-
-  my $prot_position = $prot_change;
-  $prot_position =~ s/^p\.[A-Z]+//;
-  $prot_position =~ s/[^\d].*//;
-  my $davoli_key = "$entrez_gene\t$prot_position";
-
-  if($mutation_consequences{$var_class} eq "trunc"){	# if mutation is truncating
-    $wtsi_truncs{$wtsi_key} ++;							# increment cellline+gene truncating count
-  }
-  elsif($mutation_consequences{$var_class} eq "aa_sub"){
-    # check if the mutation is recurrent as per Davoli
-    if(exists($mut_freqs{$davoli_key})){
-      $wtsi_rec_mis{$wtsi_key} ++;
-    }
-    else{
-      $wtsi_other{$wtsi_key} ++;
-    }
-  }
-  elsif($mutation_consequences{$var_class} eq "deletion"){
-    $wtsi_cnas{$wtsi_key} = -2; # hom-del
-  }
-  elsif($mutation_consequences{$var_class} eq "amplification"){
-    $wtsi_cnas{$wtsi_key} = 2; # amp
-  }
-  
-  # collect the details for later output:
-  if(exists $details_table{$wtsi_key}{"wtsi_mut"}){
-    $details_table{$wtsi_key}{"wtsi_mut"} .=  "; $prot_change";
-    $details_table{$wtsi_key}{"wtsi_type"} .=  "; $mutation_consequences{$var_class}";
-    if(exists($mut_freqs{$davoli_key})){
-      $details_table{$wtsi_key}{"wtsi_davoli_freq"} .= "; $mut_freqs{$davoli_key}";
-    }
-    else{
-      $details_table{$wtsi_key}{"wtsi_davoli_freq"} .= "; NA";
-    }
-  }
-  else{
-    $details_table{$wtsi_key}{"wtsi_mut"} =  $prot_change;
-    $details_table{$wtsi_key}{"wtsi_type"} .=  $mutation_consequences{$var_class};
-    if(exists($mut_freqs{$davoli_key})){
-      $details_table{$wtsi_key}{"wtsi_davoli_freq"} = "$mut_freqs{$davoli_key}";
-    }
-    else{
-      $details_table{$wtsi_key}{"wtsi_davoli_freq"} = "NA";
-    }
-  }
-  
-} # finished reading file, close
-close WTSI;
-
+if(defined $wtsi_mut_data){
+	# Open and read mutations file
+	open WTSI, "< $wtsi_mut_data" or die "Can't read mutations file $wtsi_mut_data: $!\n";
+	
+	my $header = <WTSI>;
+	
+	while(<WTSI>){
+	
+	  # get gene, cell line, prot. mut., consequence etc.
+	  # [0] ID_VARIANT
+	  # [1] SAMPLE_NAME
+	  # [2] CHR
+	  # [3] GENOME_START
+	  # [4] GENOME_STOP
+	  # [5] STRAND
+	  # [6] ALGORITHM
+	  # [7] GENE_NAME
+	  # [8] COSMIC_Name
+	  # [9] TRANSCRIPT
+	  # [10] WT
+	  # [11] MT
+	  # [12] CDS_SYNTAX
+	  # [13] AA_MUT_SYNTAX
+	  # [14] DESCRIPTION
+	  # [15] QUALITY
+	  # [16] ZYGOSITY
+	  # [17] VERIF_STATUS_MINT
+	  # [18] FATHMM Score
+	  # [19] FATHMM Summary
+	  # [20] Comment
+	
+	  my @fields = split(/\t/);
+	  my $entrez_gene = $fields[7];  # this is actually a gene symbol
+	  my $var_class = $fields[14];
+	  my $sample = $fields[1];
+	  my $genome_change = $fields[12];
+	  my $prot_change = $fields[13];
+	  my $mutation_zygosity = $fields[16];
+	  
+	  # sometimes var_class is blank and we can do nothing with it... skip
+	  next if $var_class eq '' || $var_class eq 'Unknown';
+	  
+	  # lookup gene and cell line name in dictionaries
+	
+	  $entrez_gene =~ s/_.+//;	# The COSMIC data often has the gene ID concatenated to the 
+								# transcript ID. e.g. CEACAM18_ENST00000451626
+								# strip out anything after '_' from entrez_gene
+	
+	  my $standard_gene = $entrez_gene;
+	  
+	  if(exists($genes{$entrez_gene})){
+		$standard_gene = $genes{$entrez_gene};
+	  }
+	  $entrez_gene = $standard_gene ; # this may look nuts but we are going to munge standard_gene later and want to still keep the gene symbol handy...
+	  
+	  my $standard_cell_line = $sample;
+	  if(exists($cell_lines{$sample})){
+		$standard_cell_line = $cell_lines{$sample};
+	  }
+	  else{
+		warn "Cell line $sample not found in the cell line dictionary. You may need to add it.\n";
+	  }
+	
+	  
+	  # skip processing this variant if the gene symbol is not in the set of output genes
+	  next unless exists $symbol_to_output_genes{$standard_gene};
+	
+	  # change $standard_gene from the symbol to the full trio of IDs and keep a record of
+	  # the standardised gene symbol for later use in $entrez_gene;
+	  $standard_gene = $symbol_to_output_genes{$standard_gene};
+	
+	  # store a hash key for every cell line * genome_change * consequence seen
+	  # skip if already counted...
+	  my $sample_genome_change_key = $standard_cell_line . "_" . $genome_change . "_" . $var_class;
+	  if(exists($mutations_seen{$sample_genome_change_key})){
+	#    print "already seen $sample_genome_change_key - skipping.\n";
+		next;
+	  }
+	  else{
+		$mutations_seen{$sample_genome_change_key} = 1;
+	  }
+	
+	  my $wtsi_key = "$standard_cell_line\t$standard_gene";
+	  
+	  # update the master record of all cell lines and genes seen
+	  if(exists($master_cell_lines_seen{$standard_cell_line})){
+		$master_cell_lines_seen{$standard_cell_line} .= "\tmut\tCNA";
+	  }
+	  else{
+		$master_cell_lines_seen{$standard_cell_line} = "\tmut\tCNA";
+	  }
+	  $master_genes_seen{$standard_gene} = 1;
+	
+	  my $prot_position = $prot_change;
+	  $prot_position =~ s/^p\.[A-Z]+//;
+	  $prot_position =~ s/[^\d].*//;
+	  my $davoli_key = "$entrez_gene\t$prot_position";
+	
+	  if($mutation_consequences{$var_class} eq "trunc"){	# if mutation is truncating
+		$wtsi_truncs{$wtsi_key} ++;							# increment cellline+gene truncating count
+	  }
+	  elsif($mutation_consequences{$var_class} eq "aa_sub"){
+		# check if the mutation is recurrent as per Davoli
+		if(exists($mut_freqs{$davoli_key})){
+		  $wtsi_rec_mis{$wtsi_key} ++;
+		}
+		else{
+		  $wtsi_other{$wtsi_key} ++;
+		}
+	  }
+	  elsif($mutation_consequences{$var_class} eq "deletion"){
+		$wtsi_cnas{$wtsi_key} = -2; # hom-del
+	  }
+	  elsif($mutation_consequences{$var_class} eq "amplification"){
+		$wtsi_cnas{$wtsi_key} = 2; # amp
+		
+		### DEBUG
+		print "WTSI - found an AMP for $wtsi_key\n";
+		
+	  }
+	  
+	  # collect the details for later output:
+	  if(exists $details_table{$wtsi_key}{"wtsi_mut"}){
+		$details_table{$wtsi_key}{"wtsi_mut"} .=  "; $prot_change";
+		$details_table{$wtsi_key}{"wtsi_type"} .=  "; $mutation_consequences{$var_class}";
+		if(exists($mut_freqs{$davoli_key})){
+		  $details_table{$wtsi_key}{"wtsi_davoli_freq"} .= "; $mut_freqs{$davoli_key}";
+		}
+		else{
+		  $details_table{$wtsi_key}{"wtsi_davoli_freq"} .= "; NA";
+		}
+	  }
+	  else{
+		$details_table{$wtsi_key}{"wtsi_mut"} =  $prot_change;
+		$details_table{$wtsi_key}{"wtsi_type"} .=  $mutation_consequences{$var_class};
+		if(exists($mut_freqs{$davoli_key})){
+		  $details_table{$wtsi_key}{"wtsi_davoli_freq"} = "$mut_freqs{$davoli_key}";
+		}
+		else{
+		  $details_table{$wtsi_key}{"wtsi_davoli_freq"} = "NA";
+		}
+	  }
+	  
+	} # finished reading file, close
+	close WTSI;
+}
 
 
 # ================================= #
@@ -892,72 +901,73 @@ close WTSI;
 
 my %ccle_cnas;		# store: none/amp/del/gain/loss
 
-# Open and read the CCLE CNA file
-open CCLECNA, "< $ccle_cna_data" or die "Can't read mutations file $ccle_cna_data: $!\n";
-
-$header = <CCLECNA>;
-chomp($header);
-my @ccle_cna_celllines = split(/\t/,$header);
-
-while(<CCLECNA>){
-
-  my @fields = split(/\t/);
-  chomp($fields[$#fields]);
-
-  my $gene_id = shift @fields;
-  my $gene_symbol = shift @fields;
- # if(exists($genes{$standard_gene})){
- #   $standard_gene = $genes{$standard_gene};
- # }
-  
-  unless(exists($entrez_to_output_genes{$gene_id})){
-    print "Skipping $gene_id ($gene_symbol)\n";
-    next;
-  }
-  
-  my $standard_gene = $entrez_to_output_genes{$gene_id};
-  
-  my $cell_line_counter = 2;	# We start counting from the index of the first cell line name
-  								# i.e. we skip the first two array elements with geneID and symbol
-  
-  foreach my $cna (@fields){
-    
-    my $standard_cell_line = $ccle_cna_celllines[$cell_line_counter];
-    $cell_line_counter ++;
-    
-    if(exists($cell_lines{$standard_cell_line})){
-      $standard_cell_line = $cell_lines{$standard_cell_line};
-    }
-    else{
-      warn "Cell line $standard_cell_line not found in the cell line dictionary. You may need to add it.\n";
-    }
-    
-    
-    # update the master record of all cell lines and genes seen
-    if(exists($master_cell_lines_seen{$standard_cell_line})){
-    	$master_cell_lines_seen{$standard_cell_line} .= "\tCNA";
-    }
-    else{
-    	$master_cell_lines_seen{$standard_cell_line} = "\tCNA";
-    }
-    $master_genes_seen{$standard_gene} = 1; 
-    
-    my $ccle_cna_key = "$standard_cell_line\t$standard_gene";
-
-    $ccle_cnas{$ccle_cna_key} = $cna;
-    
-    # add the CCLE CNA to the details table hash
-    if(exists $details_table{$ccle_cna_key}{"ccle_cna"}){
-      $details_table{$ccle_cna_key}{"ccle_cna"} .= "; $cna";
-    }
-    else{
-      $details_table{$ccle_cna_key}{"ccle_cna"} = "$cna";
-    }    
-  }
-
-} # finished reading file, close
-close CCLECNA;
-
+if(defined $ccle_cna_data){
+	# Open and read the CCLE CNA file
+	open CCLECNA, "< $ccle_cna_data" or die "Can't read mutations file $ccle_cna_data: $!\n";
+	
+	my $header = <CCLECNA>;
+	chomp($header);
+	my @ccle_cna_celllines = split(/\t/,$header);
+	
+	while(<CCLECNA>){
+	
+	  my @fields = split(/\t/);
+	  chomp($fields[$#fields]);
+	
+	  my $gene_id = shift @fields;
+	  my $gene_symbol = shift @fields;
+	 # if(exists($genes{$standard_gene})){
+	 #   $standard_gene = $genes{$standard_gene};
+	 # }
+	  
+	  unless(exists($entrez_to_output_genes{$gene_id})){
+		print "Skipping $gene_id ($gene_symbol)\n";
+		next;
+	  }
+	  
+	  my $standard_gene = $entrez_to_output_genes{$gene_id};
+	  
+	  my $cell_line_counter = 2;	# We start counting from the index of the first cell line name
+									# i.e. we skip the first two array elements with geneID and symbol
+	  
+	  foreach my $cna (@fields){
+		
+		my $standard_cell_line = $ccle_cna_celllines[$cell_line_counter];
+		$cell_line_counter ++;
+		
+		if(exists($cell_lines{$standard_cell_line})){
+		  $standard_cell_line = $cell_lines{$standard_cell_line};
+		}
+		else{
+		  warn "Cell line $standard_cell_line not found in the cell line dictionary. You may need to add it.\n";
+		}
+		
+		
+		# update the master record of all cell lines and genes seen
+		if(exists($master_cell_lines_seen{$standard_cell_line})){
+			$master_cell_lines_seen{$standard_cell_line} .= "\tCNA";
+		}
+		else{
+			$master_cell_lines_seen{$standard_cell_line} = "\tCNA";
+		}
+		$master_genes_seen{$standard_gene} = 1; 
+		
+		my $ccle_cna_key = "$standard_cell_line\t$standard_gene";
+	
+		$ccle_cnas{$ccle_cna_key} = $cna;
+		
+		# add the CCLE CNA to the details table hash
+		if(exists $details_table{$ccle_cna_key}{"ccle_cna"}){
+		  $details_table{$ccle_cna_key}{"ccle_cna"} .= "; $cna";
+		}
+		else{
+		  $details_table{$ccle_cna_key}{"ccle_cna"} = "$cna";
+		}    
+	  }
+	
+	} # finished reading file, close
+	close CCLECNA;
+}
 
 # =============================== #
 # Process the expression z-scores
@@ -965,69 +975,70 @@ close CCLECNA;
 
 my %wtsi_exprn_z;		# store: -1/0/1 for under/normal/overexpression
 
-# Open and read the CCLE CNA file
-open EXPRNZ, "< $wtsi_expression_z_data" or die "Can't read expression z-scores file $wtsi_expression_z_data: $!\n";
-
-
-# gene	expression.z	cell.line
-# CHEK2_11200_ENSG00000183765	NA	SW13_ADRENAL_GLAND
-# CHEK2_11200_ENSG00000183765	-2.00063333901991	NH12_AUTONOMIC_GANGLIA
-# CHEK2_11200_ENSG00000183765	-1.10868384234017	CHP212_AUTONOMIC_GANGLIA
-
-$header = <EXPRNZ>;
-
-while(<EXPRNZ>){
-
-  my @fields = split(/\t/);
-  my $standard_gene = $fields[0];
-  my $exprnz = $fields[1];
-  my $standard_cell_line = $fields[2];
-  
-  chomp $standard_cell_line;
-  $standard_gene =~ s/^([^_]+)_([^_]+)_/$1\t$2\t/; # replace the underscores following the symbol and EntrezGeneID for tabs
-  next if $exprnz =~ /NA/;
-  
-  # lookup gene and cell line name in dictionaries
-
-  # skip processing this variant if the gene symbol is not in the set of output genes
-  if(!exists $output_genes{$standard_gene}){
-#    print "Skipping expression for gene: $standard_gene\n";
-    next;
-  }
-
-  my $wtsi_key = "$standard_cell_line\t$standard_gene";
-  
-  # update the master record of all cell lines and genes seen
-  if(exists($master_cell_lines_seen{$standard_cell_line})){
-  	$master_cell_lines_seen{$standard_cell_line} .= "\texprn";
-  }
-  else{
-  	$master_cell_lines_seen{$standard_cell_line} = "\texprn";
-  }
-  $master_genes_seen{$standard_gene} = 1;
-
-  if($exprnz >= 2){	# overexpressed
-    $wtsi_exprn_z{$wtsi_key} = 1;
-  }
-  elsif($exprnz <= -2){ # underexpressed
-    $wtsi_exprn_z{$wtsi_key} = -1;
-  }
-  else{
-    $wtsi_exprn_z{$wtsi_key} = 0;
-  }
-  
-  # add expression z-scores to the detail table hash
-  if(exists $details_table{$wtsi_key}{'exprnz'}){
-    $details_table{$wtsi_key}{'exprnz'} .= "; $exprnz";
-  }
-  else{
-    $details_table{$wtsi_key}{'exprnz'} = $exprnz;
-  }
-  
-  
-} # finished reading file, close
-close EXPRNZ;
-
+if(defined $wtsi_expression_z_data){
+	# Open and read the CCLE CNA file
+	open EXPRNZ, "< $wtsi_expression_z_data" or die "Can't read expression z-scores file $wtsi_expression_z_data: $!\n";
+	
+	
+	# gene	expression.z	cell.line
+	# CHEK2_11200_ENSG00000183765	NA	SW13_ADRENAL_GLAND
+	# CHEK2_11200_ENSG00000183765	-2.00063333901991	NH12_AUTONOMIC_GANGLIA
+	# CHEK2_11200_ENSG00000183765	-1.10868384234017	CHP212_AUTONOMIC_GANGLIA
+	
+	my $header = <EXPRNZ>;
+	
+	while(<EXPRNZ>){
+	
+	  my @fields = split(/\t/);
+	  my $standard_gene = $fields[0];
+	  my $exprnz = $fields[1];
+	  my $standard_cell_line = $fields[2];
+	  
+	  chomp $standard_cell_line;
+	  $standard_gene =~ s/^([^_]+)_([^_]+)_/$1\t$2\t/; # replace the underscores following the symbol and EntrezGeneID for tabs
+	  next if $exprnz =~ /NA/;
+	  
+	  # lookup gene and cell line name in dictionaries
+	
+	  # skip processing this variant if the gene symbol is not in the set of output genes
+	  if(!exists $output_genes{$standard_gene}){
+	#    print "Skipping expression for gene: $standard_gene\n";
+		next;
+	  }
+	
+	  my $wtsi_key = "$standard_cell_line\t$standard_gene";
+	  
+	  # update the master record of all cell lines and genes seen
+	  if(exists($master_cell_lines_seen{$standard_cell_line})){
+		$master_cell_lines_seen{$standard_cell_line} .= "\texprn";
+	  }
+	  else{
+		$master_cell_lines_seen{$standard_cell_line} = "\texprn";
+	  }
+	  $master_genes_seen{$standard_gene} = 1;
+	
+	  if($exprnz >= 2){	# overexpressed
+		$wtsi_exprn_z{$wtsi_key} = 1;
+	  }
+	  elsif($exprnz <= -2){ # underexpressed
+		$wtsi_exprn_z{$wtsi_key} = -1;
+	  }
+	  else{
+		$wtsi_exprn_z{$wtsi_key} = 0;
+	  }
+	  
+	  # add expression z-scores to the detail table hash
+	  if(exists $details_table{$wtsi_key}{'exprnz'}){
+		$details_table{$wtsi_key}{'exprnz'} .= "; $exprnz";
+	  }
+	  else{
+		$details_table{$wtsi_key}{'exprnz'} = $exprnz;
+	  }
+	  
+	  
+	} # finished reading file, close
+	close EXPRNZ;
+}
 
 # ==================================== #
 # Process the hashes to format outputs
@@ -1041,7 +1052,7 @@ my @cell_lines_seen = keys %master_cell_lines_seen;
 my @genes_seen = keys %output_genes;		# the list of genes from CGC and C5000
 
 
-# We need to indicate which data sets were available (mut, cna or mut_cna) as a column
+# We need to indicate which data sets were available (mut, cna or expression) as a column
 # in the output.
 
 my $output_data = '';				# detailed output with separate columns for truncs, hotspots, others, CNAs and expression 
