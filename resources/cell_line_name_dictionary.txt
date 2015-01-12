@@ -1,23 +1,24 @@
-# icr-intercell cell line name dictionary v0.2
-#	
-# jamesc@icr.ac.uk, 13th May 2014
-#	
-# This file is used as a dictionary to standardise cell line names in different data sets	
-# Cell line names found in the first column (cell_line_name) should be converted to those	
-# given in the second column (intercell_name).	
-#	
-# cell line name sources used:	
+# icr-intercell cell line name dictionary v0.2		
+#		
+"# jamesc@icr.ac.uk, 13th May 2014"		
+#		
+# This file is used as a dictionary to standardise cell line names in different data sets		
+# Cell line names found in the first column (cell_line_name) should be converted to those		
+# given in the second column (intercell_name).		
+#		
+# cell line name sources used:		
 #		COSMIC CLP (http://cancer.sanger.ac.uk/cancergenome/projects/cosmic/download -> CosmicCLP_CompleteExport_v68.tsv.gz)
 #		CCLE (http://www.broadinstitute.org/ccle/data/browseData -> registration required -> CCLE_sample_info_file_2012-10-18.txt)
 #		Intercell (http://www.ncbi.nlm.nih.gov/pubmed/21984977)
-#
-# The cell line names used in the Intercell analysis attempt to follow the CCLE naming convention. The CCLE nameing convention comprises	
-# the convention is the cell line name (containing only numbers and upper case letters) followed by an underscore, followed by the tissue in upper case.
-# Where a cell line was not present in the CCLE data, a best effort was made to use the tissue type as given by the CCLE.
-#
-# Changes:
-# v0.2 - changed 'PANCREAS' to 'PANCREAS' for the Biankin lines (TKCC*)
-#
+#		
+# The cell line names used in the Intercell analysis attempt to follow the CCLE naming convention. The CCLE nameing convention comprises		
+"# the convention is the cell line name (containing only numbers and upper case letters) followed by an underscore, followed by the tissue in upper case."		
+"# Where a cell line was not present in the CCLE data, a best effort was made to use the tissue type as given by the CCLE."		
+#		
+# Changes:		
+# v0.2 - changed 'PANCREAS' to 'PANCREAS' for the Biankin lines (TKCC*)		
+# 8th Jan 2015 - added ovarian lines such as TOV21G (in house names)		
+#		
 #cell_line_name	intercell_name	source
 5	5_UNKOWN	cosmic_clp
 29	29_UNKOWN	cosmic_clp
@@ -2944,3 +2945,31 @@ ZR751_BREAST	ZR751_BREAST	CCLE
 ZR751_BREAST	ZR751_BREAST	intercell
 ZR7530_BREAST	ZR7530_BREAST	CCLE
 ZR7530_BREAST	ZR7530_BREAST	intercell
+TOV21G	TOV21G_OVARY	intercell
+ES2	ES2_OVARY	intercell
+HCH1	HCH1_OVARY	intercell
+KOC7C	KOC7C_OVARY	intercell
+OVISE	OVISE_OVARY	intercell
+OVMANA	OVMANA_OVARY	intercell
+OVSAYO	OVSAYO_OVARY	intercell
+OVAS	OVAS_OVARY	intercell
+OVTOKO	OVTOKO_OVARY	intercell
+RMGI	RMGI_OVARY	intercell
+SMOV2	SMOV2_OVARY	intercell
+143B	143B_BONE	WTSI
+CAL-72	CAL72_BONE	WTSI
+G-292_Clone_A141B1	G292CLONEA141B1_BONE	WTSI
+HAL	HAL_BONE	WTSI
+HOS	HOS_BONE	WTSI
+HOSMNNG	HOSMNNG_BONE	WTSI
+HuO-3N1	HUO3N1_BONE	WTSI
+HuO9	HUO9_BONE	WTSI
+KPD	KPD_BONE	WTSI
+MG-63	MG63_BONE	WTSI
+MHM	MHM_BONE	WTSI
+NOS-1	NOS1_BONE	WTSI
+NY	NY_BONE	WTSI
+OHS	OHS_BONE	WTSI
+OST	OST_BONE	WTSI
+Saos-2	SAOS2_BONE	WTSI
+U-2-OS	U2OS_BONE	WTSI
