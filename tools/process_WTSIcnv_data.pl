@@ -318,9 +318,9 @@ while(my ($seen_cell_line, $cell_line_seen_in_dataset) = each  %master_cell_line
       if($amp == 1){
         $matrix_value = 1;
       }
-      elsif($hom_del == 1){
-        $other = 1;
-      }
+#      elsif($hom_del == 1){
+#        $other = 1;
+#      }
       #elsif($hom_del == 1 || $loss == 1 || $gain == 1){
       #  $other = 1;
       #}
@@ -329,9 +329,9 @@ while(my ($seen_cell_line, $cell_line_seen_in_dataset) = each  %master_cell_line
       if($hom_del == 1){
         $matrix_value = 1;
       }
-      elsif($amp == 1){
-        $other = 1;
-      }
+#      elsif($amp == 1){
+#        $other = 1;
+#      }
       #elsif($amp == 1 || $loss == 1 || $gain == 1){
       #  $other = 1;
       #}

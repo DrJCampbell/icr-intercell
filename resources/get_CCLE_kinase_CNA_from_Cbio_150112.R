@@ -1,4 +1,4 @@
-# download CCLE geistic data for kinase genes from cBioPortal
+# download CCLE gistic data for kinase genes from cBioPortal
 # jamesc@icr.ac.uk, 12th Jan 2015
 
 setwd("/Users/jamesc/Dropbox/Intercell_II_analysis/icr-intercell/resources/")

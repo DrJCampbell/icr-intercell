@@ -254,14 +254,14 @@ while(my ($seen_cell_line, $cell_line_seen_in_dataset) = each  %master_cell_line
       if($ccle_cnas{$hash_key} == -2){
         $hom_del = 1;
       }
+      elsif($ccle_cnas{$hash_key} == -1){
+        $loss = 1;
+      }
       elsif($ccle_cnas{$hash_key} == 1){
         $gain = 1;
       }
       elsif($ccle_cnas{$hash_key} == 2){
         $amp = 1;
-      }
-      elsif($ccle_cnas{$hash_key} == -1){
-        $loss = 1;
       }
     }
 
@@ -270,12 +270,23 @@ while(my ($seen_cell_line, $cell_line_seen_in_dataset) = each  %master_cell_line
     my $matrix_value = 0;
 
     if($output_genes{$seen_gene} eq 'OG'){
+
+      # this condition sets amp to func and gain to other
       if($amp == 1){
         $matrix_value = 1;
       }
-      elsif($hom_del == 1){
-        $other = 1;
-      }
+#      elsif($hom_del == 1){
+#        $other = 1;
+#      }
+# The else block was removed as we are no longer classifying
+# loss/gain CNVs as reasons to exclude cell lines...
+
+
+      # this conditions sets amp to func and amp|del to other
+      #elsif($hom_del == 1){
+      #  $other = 1;
+      #}
+
       #elsif($hom_del == 1 || $loss == 1 || $gain == 1){
       #  $other = 1;
       #}
@@ -284,12 +295,21 @@ while(my ($seen_cell_line, $cell_line_seen_in_dataset) = each  %master_cell_line
       if($hom_del == 1){
         $matrix_value = 1;
       }
-      elsif($amp == 1){
-        $other = 1;
-      }
+#      elsif($loss == 1){
+#        $other = 1;
+#      }
+# The else block was removed as we are no longer classifying
+# loss/gain CNVs as reasons to exclude cell lines...
+      
+      # this condition sets amp to other
+      #elsif($amp == 1){
+      #  $other = 1;
+      #}
+
       #elsif($amp == 1 || $loss == 1 || $gain == 1){
       #  $other = 1;
       #}
+
     }
     
     # add to the mutation/other_matrix depending on the classification
