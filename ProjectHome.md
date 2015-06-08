@@ -1,0 +1,1 @@
+Intercell is a project where cancer cell lines are screened using libraries of siRNAs to selectively knock-down gene products and measure the effect of this knock-down on cell viability.
